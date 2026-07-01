@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夹枪杆全流程自动化 - 方案设计</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --purple: #c084fc;
+    --orange: #fb923c;
+    --pink: #f472b6;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+  }
+  .container { max-width: 1400px; margin:0 auto; }
+  h1 { font-size:2.2em; text-align:center; margin:20px 0 10px; background:linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  h2 { font-size:1.5em; color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:8px; margin:40px 0 20px; }
+  h3 { font-size:1.2em; color:var(--purple); margin:20px 0 10px; }
+  .subtitle { text-align:center; color:var(--muted); margin-bottom:30px; font-size:1.1em; }
+
+  /* Cards */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; margin:20px 0; }
+  .card-header { font-size:1.15em; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.75em; font-weight:600; }
+  .badge-hw { background:#1e3a5f; color:var(--accent); }
+  .badge-sw { background:#1e3a1e; color:var(--green); }
+  .badge-st { background:#3a1e3a; color:var(--purple); }
+  .badge-warn { background:#3a2e1e; color:var(--yellow); }
+
+  /* Grid */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  @media (max-width:900px) { .grid-2,.grid-3,.grid-4 { grid-template-columns:1fr; } }
+
+  /* Tables */
+  table { width:100%; border-collapse:collapse; margin:12px 0; }
+  th { background:#0f2744; color:var(--accent); padding:10px 14px; text-align:left; font-weight:600; font-size:0.9em; }
+  td { padding:10px 14px; border-bottom:1px solid var(--border); font-size:0.9em; }
+  tr:hover td { background:rgba(56,189,248,0.04); }
+  .mono { font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:0.85em; }
+
+  /* State machine */
+  .state-flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0; }
+  .state-node { background:linear-gradient(135deg,#1e3a5f,#1a2744); border:2px solid var(--accent); border-radius:12px; padding:12px 18px; text-align:center; min-width:120px; }
+  .state-node.active { border-color:var(--green); background:linear-gradient(135deg,#1a3a1e,#1a2744); }
+  .state-node.err { border-color:var(--red); }
+  .state-arrow { font-size:1.5em; color:var(--muted); }
+  .state-name { font-weight:700; font-size:0.95em; }
+  .state-desc { font-size:0.75em; color:var(--muted); margin-top:4px; }
+
+  /* Timeline */
+  .timeline { position:relative; padding-left:30px; }
+  .timeline::before { content:''; position:absolute; left:14px; top:8px; bottom:8px; width:2px; background:var(--border); }
+  .tl-step { position:relative; margin-bottom:20px; }
+  .tl-step::before { content:''; position:absolute; left:-22px; top:6px; width:14px; height:14px; border-radius:50%; border:2px solid var(--accent); background:var(--bg); }
+  .tl-step.done::before { background:var(--green); border-color:var(--green); }
+  .tl-title { font-weight:700; color:var(--accent); }
+  .tl-detail { font-size:0.85em; color:var(--muted); margin-top:2px; }
+
+  /* Code blocks */
+  pre { background:#0d1117; border:1px solid var(--border); border-radius:8px; padding:14px 18px; overflow-x:auto; font-size:0.82em; line-height:1.5; }
+  code { font-family:'Cascadia Code','Fira Code','Consolas',monospace; }
+  .keyword { color:#ff7b72; }
+  .type { color:#79c0ff; }
+  .func { color:#d2a8ff; }
+  .comment { color:#8b949e; font-style:italic; }
+  .string { color:#a5d6ff; }
+  .number { color:#79c0ff; }
+
+  /* Flow arrows */
+  .flow-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:10px 0; padding:8px 16px; background:rgba(56,189,248,0.05); border-radius:8px; border-left:3px solid var(--accent); }
+  .flow-box { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:0.85em; white-space:nowrap; }
+  .flow-arrow { color:var(--green); font-weight:700; font-size:1.2em; }
+
+  /* Legend */
+  .legend { display:flex; gap:24px; flex-wrap:wrap; margin:16px 0; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:0.85em; }
+
+  /* Phase indicators */
+  .phase { display:inline-block; padding:4px 12px; border-radius:6px; font-weight:700; font-size:0.8em; margin-right:8px; }
+  .phase-pick { background:#1e3a1e; color:var(--green); }
+  .phase-dock { background:#1e3a5f; color:var(--accent); }
+  .phase-place { background:#3a2e1e; color:var(--orange); }
+  .phase-change { background:#3a1e3a; color:var(--purple); }
+
+  .highlight { background:rgba(250,204,21,0.15); padding:2px 6px; border-radius:4px; }
+  .toc { display:flex; flex-wrap:wrap; gap:8px; margin:24px 0; }
+  .toc a { color:var(--accent); text-decoration:none; padding:6px 14px; border:1px solid var(--border); border-radius:20px; font-size:0.9em; transition:all 0.2s; }
+  .toc a:hover { background:rgba(56,189,248,0.1); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🤖 夹枪杆全流程自动化方案</h1>
+<p class="subtitle">方案B — 取枪·夹紧·对接·放枪 全流程状态机设计 &nbsp;|&nbsp; 目标平台: RC26_H7_R1 (STM32H723 + FreeRTOS)</p>
+
+<!-- TOC -->
+<div class="toc">
+  <a href="#s1">📋 现状分析</a>
+  <a href="#s2">🔧 硬件映射</a>
+  <a href="#s3">🧠 状态机设计</a>
+  <a href="#s4">🔄 子流程详解</a>
+  <a href="#s5">📊 时序图</a>
+  <a href="#s6">💻 代码结构</a>
+  <a href="#s7">🔌 集成方案</a>
+</div>
+
+<!-- ============ SECTION 1: 现状分析 ============ -->
+<h2 id="s1">📋 1. 现状分析</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="badge badge-warn">当前痛点</span> 现有手动流程的问题</div>
+    <table>
+      <tr><th>问题</th><th>现状</th><th>影响</th></tr>
+      <tr><td>硬编码延时</td><td><code class="mono">vTaskDelay(800)</code> 等固定延时</td><td>无法适应机械差异、电池电压变化</td></tr>
+      <tr><td>按钮依赖</td><td>需操作手按 rodPos 按钮触发</td><td>占用操作手注意力，易误操作</td></tr>
+      <tr><td>无状态保护</td><td>无超时/异常回退机制</td><td>卡死后无恢复路径</td></tr>
+      <tr><td>代码分散</td><td>逻辑散落在 Free_Task/weapon/timer</td><td>难以调试和维护</td></tr>
+      <tr><td>无传感器反馈</td><td>PE9 微动开关未充分利用</td><td>无法确认枪杆是否真正到位</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="badge badge-sw">代码分布</span> 现有夹枪杆相关代码位置</div>
+    <table>
+      <tr><th>文件</th><th>函数/区域</th><th>功能</th></tr>
+      <tr><td><code class="mono">Can_Task.c:272-330</code></td><td>Free_Task()</td><td>手动换枪按钮序列（核心）</td></tr>
+      <tr><td><code class="mono">timer.c:12-23</code></td><td>BUT_check()</td><td>rodPos 按钮边沿检测</td></tr>
+      <tr><td><code class="mono">weapon.c:55-87</code></td><td>weapon_hold()</td><td>2325 电机枪杆固定</td></tr>
+      <tr><td><code class="mono">weapon.c:22-50</code></td><td>weapon_mode()</td><td>武器模式 + R2 抬升</td></tr>
+      <tr><td><code class="mono">kfs.c:36-74</code></td><td>kfs_catch_mode()</td><td>夹爪开合控制</td></tr>
+      <tr><td><code class="mono">arm.c:95-379</code></td><td>Arm_task()</td><td>机械臂运动学+控制</td></tr>
+      <tr><td><code class="mono">auto_mode.c</code></td><td>auto_mission()</td><td>半成品一次对接（注释了大量）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ SECTION 2: 硬件映射 ============ -->
+<h2 id="s2">🔧 2. 硬件映射总览</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge badge-hw">HARDWARE</span> 夹枪杆系统涉及的全部硬件</div>
+  <table>
+    <tr><th>硬件</th><th>接口</th><th>参数</th><th>功能描述</th></tr>
+    <tr>
+      <td>🔌 舵机 (推杆)</td>
+      <td><code class="mono">TIM2 CH1 (PA0)</code></td>
+      <td>PWM 50Hz: <span class="highlight">1600us</span>=中位, <span class="highlight">1450us</span>=释放, <span class="highlight">2100us</span>=竖立</td>
+      <td>控制枪杆推杆伸缩，将枪杆从水平推到竖直</td>
+    </tr>
+    <tr>
+      <td>🔌 滑台夹持</td>
+      <td><code class="mono">TIM2 CH3 (PA2)</code></td>
+      <td>PWM 50Hz: <span class="highlight">600us</span>=推出, <span class="highlight">2500us</span>=收回</td>
+      <td>控制枪杆夹持机构的推/收</td>
+    </tr>
+    <tr>
+      <td>🔌 夹爪电磁阀</td>
+      <td><code class="mono">GPIO PC10</code></td>
+      <td>DO: SET=开, RESET=合</td>
+      <td>控制夹爪气缸的电磁阀</td>
+    </tr>
+    <tr>
+      <td>📡 枪杆检测传感器</td>
+      <td><code class="mono">GPIO PE9</code></td>
+      <td>DI: 微动开关 (RESET=有枪杆)</td>
+      <td>检测枪杆是否在位（参考R2 clamp_head_ctrl）</td>
+    </tr>
+    <tr>
+      <td>🔌 气泵控制1</td>
+      <td><code class="mono">GPIO PE14</code></td>
+      <td>DO: SET=开</td>
+      <td>KFS 气泵1（吸盘）</td>
+    </tr>
+    <tr>
+      <td>🔌 气泵控制2</td>
+      <td><code class="mono">GPIO PC12</code></td>
+      <td>DO: SET=开</td>
+      <td>KFS 气泵2（吸盘）</td>
+    </tr>
+    <tr>
+      <td>⚙️ 2325 收集电机</td>
+      <td><code class="mono">CAN (DM ID=0x05)</code></td>
+      <td>DM_MotorModule</td>
+      <td>枪杆旋转收集/释放机构</td>
+    </tr>
+    <tr>
+      <td>⚙️ 机械臂关节1</td>
+      <td><code class="mono">CAN (DM ID=0x01)</code></td>
+      <td>4310 电机</td>
+      <td>大臂关节</td>
+    </tr>
+    <tr>
+      <td>⚙️ 机械臂关节2</td>
+      <td><code class="mono">CAN (DM ID=0x02)</code></td>
+      <td>4310 电机</td>
+      <td>小臂关节</td>
+    </tr>
+    <tr>
+      <td>⚙️ 机械臂关节3</td>
+      <td><code class="mono">CAN (DM ID=0x03)</code></td>
+      <td>4310 电机</td>
+      <td>末端旋转关节</td>
+    </tr>
+    <tr>
+      <td>⚙️ 夹爪电机</td>
+      <td><code class="mono">CAN (DM ID=0x04)</code></td>
+      <td>2325 电机 (kfs_catch)</td>
+      <td>KFS 夹爪开合</td>
+    </tr>
+    <tr>
+      <td>⚙️ R2 抬升左</td>
+      <td><code class="mono">CAN (DM ID=0x05)</code></td>
+      <td>4310 电机</td>
+      <td>R2 抬升机构左侧</td>
+    </tr>
+    <tr>
+      <td>⚙️ R2 抬升右</td>
+      <td><code class="mono">CAN (DM ID=0x06)</code></td>
+      <td>4310 电机</td>
+      <td>R2 抬升机构右侧</td>
+    </tr>
+  </table>
+
+  <div class="legend" style="margin-top:16px;">
+    <div class="legend-item">🔌 = GPIO/PWM 直控</div>
+    <div class="legend-item">📡 = 传感器输入</div>
+    <div class="legend-item">⚙️ = CAN 总线电机</div>
+  </div>
+</div>
+
+<!-- ============ SECTION 3: 状态机设计 ============ -->
+<h2 id="s3">🧠 3. 自动化状态机 — 顶层设计</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge badge-st">STATE MACHINE</span> ClampRodAuto 顶层状态</div>
+
+  <div class="state-flow" style="justify-content:center;">
+    <div class="state-node">
+      <div class="state-name">🟢 IDLE</div>
+      <div class="state-desc">空闲，等待触发</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node">
+      <div class="state-name">📐 ARM_TO_PICK</div>
+      <div class="state-desc">机械臂运动到取枪位</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node">
+      <div class="state-name">✋ CLAW_CLOSE</div>
+      <div class="state-desc">夹爪闭合抓取枪杆</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node">
+      <div class="state-name">🔧 SERVO_PUSH</div>
+      <div class="state-desc">舵机推杆 + 枪杆竖立</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node active">
+      <div class="state-name">📦 MOTOR_COLLECT</div>
+      <div class="state-desc">2325电机收集固定</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node">
+      <div class="state-name">🔄 ARM_RETRACT</div>
+      <div class="state-desc">机械臂收回至安全位</div>
+    </div>
+    <span class="state-arrow">→</span>
+    <div class="state-node">
+      <div class="state-name">✅ DONE</div>
+      <div class="state-desc">取枪完成</div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px; color:var(--muted); font-size:0.9em;">
+    ⬆️ 取枪流程（PICK）。放枪流程（PLACE）是其镜像：ARM_TO_PLACE → MOTOR_RELEASE → SERVO_RETRACT → CLAW_OPEN → ARM_RETRACT → DONE
+  </p>
+</div>
+
+<!-- Sub state machines -->
+<h3>3.1 取枪子状态机 (Pick Flow)</h3>
+
+<div class="card">
+  <table>
+    <tr><th style="width:60px;">状态</th><th style="width:180px;">名称</th><th>动作</th><th>完成条件</th><th>超时(ms)</th></tr>
+    <tr>
+      <td><span class="phase phase-pick">P0</span></td>
+      <td>IDLE</td>
+      <td>无动作，等待触发命令</td>
+      <td>收到 pick 命令</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P1</span></td>
+      <td>ARM_TO_PICK</td>
+      <td>机械臂运动到取枪位置 (mode=2, s=0.39~0.65, h=0.14)<br>同时抬升 R2 lift 到避让位 (11.5)</td>
+      <td>三关节到位 & R2 lift 到位</td>
+      <td>5000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P2</span></td>
+      <td>PRE_CLAW_OPEN</td>
+      <td>KFS夹爪张开 (kfs_catch → 35.0)</td>
+      <td>kfs_catch.position > 34.0</td>
+      <td>2000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P3</span></td>
+      <td>CLAW_CLOSE</td>
+      <td>KFS夹爪闭合抓取枪杆 (kfs_catch → 0)</td>
+      <td>kfs_catch.position < 1.0</td>
+      <td>3000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P4</span></td>
+      <td>SLIDE_PUSH</td>
+      <td>TIM2 CH3 → 600us (滑台推出)</td>
+      <td>延时 300ms</td>
+      <td>1000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P5</span></td>
+      <td>SERVO_UPRIGHT</td>
+      <td>TIM2 CH1 → 2100us (舵机推杆竖立)</td>
+      <td>延时 400ms</td>
+      <td>1000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P6</span></td>
+      <td>MOTOR_COLLECT</td>
+      <td>2325电机旋转收集 (hold_weapon: pos=-1.5, kp=1.2, kd=0.2)</td>
+      <td>weapon_collect_motor.position < -1.0</td>
+      <td>3000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P7</span></td>
+      <td>SERVO_MID</td>
+      <td>TIM2 CH1 → 1600us (舵机回中位)</td>
+      <td>延时 200ms</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P8</span></td>
+      <td>SLIDE_RETRACT</td>
+      <td>TIM2 CH3 → 2500us (滑台收回)</td>
+      <td>延时 300ms</td>
+      <td>1000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P9</span></td>
+      <td>ARM_RETRACT</td>
+      <td>机械臂回安全位 (arm_1=0.4, arm_2=-0.39, arm_3=23.8)</td>
+      <td>三关节到位</td>
+      <td>5000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-pick">P10</span></td>
+      <td>DONE</td>
+      <td>清除标志，返回 IDLE</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </table>
+</div>
+
+<h3>3.2 放枪子状态机 (Place Flow) — 取枪的镜像</h3>
+
+<div class="card">
+  <table>
+    <tr><th style="width:60px;">状态</th><th style="width:180px;">名称</th><th>动作</th><th>完成条件</th><th>超时(ms)</th></tr>
+    <tr>
+      <td><span class="phase phase-place">L0</span></td>
+      <td>IDLE</td>
+      <td>等待 place 命令</td>
+      <td>收到命令</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L1</span></td>
+      <td>ARM_TO_PLACE</td>
+      <td>机械臂到放枪位 (takePos=1: arm_1=0.4, arm_2=-0.55, arm_3=23.8)<br>R2 lift 到 0.2 (最低)</td>
+      <td>到位</td>
+      <td>5000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L2</span></td>
+      <td>SLIDE_PUSH</td>
+      <td>TIM2 CH3 → 600us</td>
+      <td>延时 300ms</td>
+      <td>1000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L3</span></td>
+      <td>SERVO_RELEASE</td>
+      <td>TIM2 CH1 → 1450us (舵机释放)</td>
+      <td>延时 400ms</td>
+      <td>1000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L4</span></td>
+      <td>MOTOR_RELEASE</td>
+      <td>2325电机反向释放 (hold_weapon 回零)</td>
+      <td>weapon_collect_motor.position > -0.2</td>
+      <td>3000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L5</span></td>
+      <td>CLAW_OPEN</td>
+      <td>KFS夹爪张开释放枪杆</td>
+      <td>kfs_catch.position > 34.0</td>
+      <td>2000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L6</span></td>
+      <td>ARM_RETRACT</td>
+      <td>机械臂收回</td>
+      <td>到位</td>
+      <td>5000</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-place">L7</span></td>
+      <td>DONE</td>
+      <td>完成</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </table>
+</div>
+
+<h3>3.3 换枪子状态机 (Change Flow)</h3>
+
+<div class="card">
+  <div class="card-header">换枪 = 放枪(前半) + 取枪(后半)，无机械臂移回安全位</div>
+  <table>
+    <tr><th style="width:60px;">状态</th><th style="width:180px;">名称</th><th>动作</th><th>条件</th></tr>
+    <tr>
+      <td><span class="phase phase-change">C0</span></td>
+      <td>RELEASE_OLD</td>
+      <td>SLIDE_PUSH → SERVO_RELEASE → MOTOR_RELEASE → CLAW_OPEN</td>
+      <td>各阶段到位</td>
+    </tr>
+    <tr>
+      <td><span class="phase phase-change">C1</span></td>
+      <td>PICK_NEW</td>
+      <td>CLAW_CLOSE → SLIDE_PUSH → SERVO_UPRIGHT → MOTOR_COLLECT → SERVO_MID → SLIDE_RETRACT</td>
+      <td>各阶段到位</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ============ SECTION 4: 子流程详解 ============ -->
+<h2 id="s4">🔄 4. 核心子流程详解</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="badge badge-sw">SUB-FLOW</span> 机械臂取枪运动</div>
+    <pre><code><span class="comment">// 机械臂运动到取枪位置 (mode=2: 取weapon)</span>
+<span class="type">Arm_Info_TypeDef</span> arm;
+arm.mode = <span class="number">2</span>;
+arm.s    = <span class="number">0.39f</span>;  <span class="comment">// 水平距离 (可通过accel调节0.39~0.65)</span>
+arm.h    = <span class="number">0.14f</span>;  <span class="comment">// 垂直高度</span>
+angles = <span class="func">Arm_Inverse_Solution</span>(&amp;arm);
+Torque = <span class="func">Torque_Comp_global</span>(&amp;kfs_arm_1, &amp;kfs_arm_2, &amp;kfs_arm_3);
+
+<span class="comment">// 设置三关节目标</span>
+kfs_arm_1.<span class="func">set_mit_data</span>(&amp;kfs_arm_1,
+    angles.theta_1 + <span class="number">0.45f</span>, <span class="number">0.0f</span>,
+    <span class="number">20.0f</span>, <span class="number">1.5f</span>, -<span class="number">0.25f</span> * Torque.Torque_1);
+kfs_arm_2.<span class="func">set_mit_data</span>(&amp;kfs_arm_2,
+    -angles.theta_2, <span class="number">0.0f</span>,
+    <span class="number">30.0f</span>, <span class="number">2.0f</span>, -Torque.Torque_2);
+kfs_arm_3.<span class="func">set_mit_data</span>(&amp;kfs_arm_3,
+    -<span class="number">25</span> * (-kfs_arm_2.position - kfs_arm_1.position
+    + <span class="number">0.43</span> + a_weapon + <span class="number">0.2f</span> * PI),
+    <span class="number">0.0f</span>, <span class="number">3.0f</span>, <span class="number">1.5f</span>, Torque.Torque_3);
+
+<span class="comment">// 到位判断 (参考 auto_mission):</span>
+<span class="comment">// arm_1: 0.48~0.52, arm_2: -0.33~-0.29, arm_3: -23~-19</span></code></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="badge badge-sw">SUB-FLOW</span> 2325电机收集/释放</div>
+    <pre><code><span class="comment">// === 收集 (Collect) ===</span>
+<span class="type">float</span> hold_weapon[<span class="number">5</span>];
+hold_weapon[<span class="number">0</span>] = -<span class="number">1.5f</span>;  <span class="comment">// 位置目标</span>
+hold_weapon[<span class="number">1</span>] = <span class="number">0.0f</span>;   <span class="comment">// 速度</span>
+hold_weapon[<span class="number">2</span>] = <span class="number">1.2f</span>;   <span class="comment">// kp</span>
+hold_weapon[<span class="number">3</span>] = <span class="number">0.2f</span>;   <span class="comment">// kd</span>
+hold_weapon[<span class="number">4</span>] = <span class="number">0.0f</span>;   <span class="comment">// torque feedforward</span>
+weapon_collect_motor.<span class="func">set_mit_data</span>(
+    &amp;weapon_collect_motor,
+    hold_weapon[<span class="number">0</span>], hold_weapon[<span class="number">1</span>],
+    hold_weapon[<span class="number">2</span>], hold_weapon[<span class="number">3</span>], hold_weapon[<span class="number">4</span>]);
+
+<span class="comment">// === 释放 (Release) ===</span>
+hold_weapon[<span class="number">0</span>] = <span class="number">0.0f</span>;
+hold_weapon[<span class="number">1</span>] = <span class="number">0.8f</span>;  <span class="comment">// 低速回零</span>
+hold_weapon[<span class="number">2</span>] = <span class="number">0.0f</span>;
+hold_weapon[<span class="number">3</span>] = <span class="number">0.3f</span>;
+hold_weapon[<span class="number">4</span>] = <span class="number">0.0f</span>;
+
+<span class="comment">// === 收紧 (Tighten, 最终位) ===</span>
+hold_weapon[<span class="number">0</span>] = <span class="number">0.0f</span>;
+hold_weapon[<span class="number">4</span>] = <span class="number">0.9f</span>;  <span class="comment">// 持续力矩保持</span></code></pre>
+  </div>
+</div>
+
+<!-- ============ SECTION 5: 时序图 ============ -->
+<h2 id="s5">📊 5. 完整取枪时序</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge badge-st">TIMING</span> 取枪全流程时序 (Pick Flow)</div>
+
+  <div style="overflow-x:auto;">
+    <table style="min-width:1200px;">
+      <tr>
+        <th>阶段</th><th>动作</th><th>执行器</th>
+        <th>T0</th><th>T+1s</th><th>T+2s</th><th>T+3s</th><th>T+4s</th><th>T+5s</th><th>T+6s</th><th>T+7s</th>
+      </tr>
+      <tr>
+        <td>P1</td><td>ARM_TO_PICK</td><td>kfs_arm_1/2/3</td>
+        <td colspan="4" style="background:rgba(56,189,248,0.15);text-align:center;">▓▓▓▓ 运动 (~3s)</td>
+        <td colspan="4"></td>
+      </tr>
+      <tr>
+        <td>P2</td><td>PRE_CLAW_OPEN</td><td>kfs_catch</td>
+        <td></td>
+        <td colspan="2" style="background:rgba(250,204,21,0.15);text-align:center;">▓▓ 张开</td>
+        <td colspan="5"></td>
+      </tr>
+      <tr>
+        <td>P3</td><td>CLAW_CLOSE</td><td>kfs_catch</td>
+        <td></td>
+        <td></td>
+        <td colspan="2" style="background:rgba(74,222,128,0.15);text-align:center;">▓▓ 闭合 (~1.5s)</td>
+        <td colspan="4"></td>
+      </tr>
+      <tr>
+        <td>P4</td><td>SLIDE_PUSH</td><td>TIM2 CH3→600</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="background:rgba(192,132,252,0.2);text-align:center;">▓</td>
+        <td colspan="4"></td>
+      </tr>
+      <tr>
+        <td>P5</td><td>SERVO_UPRIGHT</td><td>TIM2 CH1→2100</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="background:rgba(244,114,182,0.2);text-align:center;">▓</td>
+        <td colspan="3"></td>
+      </tr>
+      <tr>
+        <td>P6</td><td>MOTOR_COLLECT</td><td>weapon_collect</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td colspan="2" style="background:rgba(56,189,248,0.15);text-align:center;">▓▓ 收集</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>P7</td><td>SERVO_MID</td><td>TIM2 CH1→1600</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="background:rgba(244,114,182,0.2);text-align:center;">▓</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>P8</td><td>SLIDE_RETRACT</td><td>TIM2 CH3→2500</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="background:rgba(192,132,252,0.2);text-align:center;">▓</td>
+      </tr>
+      <tr>
+        <td>P9</td><td>ARM_RETRACT</td><td>kfs_arm_1/2/3</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="background:rgba(56,189,248,0.15);text-align:center;">→</td>
+      </tr>
+    </table>
+  </div>
+  <p style="margin-top:10px; color:var(--muted); font-size:0.8em;">
+    ⏱️ 预计总耗时: ~7-9秒 &nbsp;|&nbsp; 注: P1 和 P2/P3 可以部分重叠（夹爪可提前张开），P9 在任务结束后异步完成
+  </p>
+</div>
+
+<!-- ============ SECTION 6: 代码结构 ============ -->
+<h2 id="s6">💻 6. 代码结构设计</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge badge-sw">NEW FILES</span> 新增文件</div>
+
+  <div class="grid-2">
+    <div>
+      <h4 style="color:var(--accent);">📄 clamp_rod_auto.h</h4>
+      <pre><code><span class="comment">/**
+ * @file  clamp_rod_auto.h
+ * @brief 夹枪杆全流程自动化模块
+ * @author auto-generated
+ *
+ * 功能:
+ *   - 取枪(Pick) 全自动流程
+ *   - 放枪(Place) 全自动流程
+ *   - 换枪(Change) 全自动流程
+ *   - 异常检测与超时恢复
+ */</span>
+<span class="pre">#ifndef</span> __CLAMP_ROD_AUTO_H__
+<span class="pre">#define</span> __CLAMP_ROD_AUTO_H__
+
+<span class="pre">#include</span> <span class="string">"global.h"</span>
+
+<span class="comment">/* 流程类型 */</span>
+<span class="keyword">typedef</span> <span class="keyword">enum</span> {
+    CLAMP_ROD_FLOW_NONE = <span class="number">0</span>,
+    CLAMP_ROD_FLOW_PICK,       <span class="comment">// 取枪</span>
+    CLAMP_ROD_FLOW_PLACE,      <span class="comment">// 放枪</span>
+    CLAMP_ROD_FLOW_CHANGE,     <span class="comment">// 换枪</span>
+} ClampRodFlowType;
+
+<span class="comment">/* 状态机状态 */</span>
+<span class="keyword">typedef</span> <span class="keyword">enum</span> {
+    CLAMP_ROD_STATE_IDLE = <span class="number">0</span>,
+
+    <span class="comment">// 取枪流程 (Pick)</span>
+    CLAMP_ROD_PICK_ARM_TO_PICK,
+    CLAMP_ROD_PICK_PRE_CLAW_OPEN,
+    CLAMP_ROD_PICK_CLAW_CLOSE,
+    CLAMP_ROD_PICK_SLIDE_PUSH,
+    CLAMP_ROD_PICK_SERVO_UPRIGHT,
+    CLAMP_ROD_PICK_MOTOR_COLLECT,
+    CLAMP_ROD_PICK_SERVO_MID,
+    CLAMP_ROD_PICK_SLIDE_RETRACT,
+    CLAMP_ROD_PICK_ARM_RETRACT,
+    CLAMP_ROD_PICK_DONE,
+
+    <span class="comment">// 放枪流程 (Place)</span>
+    CLAMP_ROD_PLACE_ARM_TO_PLACE,
+    CLAMP_ROD_PLACE_SLIDE_PUSH,
+    CLAMP_ROD_PLACE_SERVO_RELEASE,
+    CLAMP_ROD_PLACE_MOTOR_RELEASE,
+    CLAMP_ROD_PLACE_CLAW_OPEN,
+    CLAMP_ROD_PLACE_ARM_RETRACT,
+    CLAMP_ROD_PLACE_DONE,
+
+    <span class="comment">// 错误状态</span>
+    CLAMP_ROD_STATE_ERROR,
+    CLAMP_ROD_STATE_TIMEOUT,
+} ClampRodState;
+
+<span class="comment">/* 运行上下文 */</span>
+<span class="keyword">typedef</span> <span class="keyword">struct</span> {
+    ClampRodState     state;
+    ClampRodFlowType  flow_type;
+    uint32_t          stage_start_ms;  <span class="comment">// 当前阶段起始时间</span>
+    uint32_t          total_start_ms;  <span class="comment">// 总流程起始时间</span>
+    uint8_t           error_code;
+    uint8_t           retry_count;
+} ClampRodAutoCtx;
+
+<span class="comment">/* 公开接口 */</span>
+<span class="keyword">void</span> <span class="func">ClampRodAuto_Init</span>(<span class="keyword">void</span>);
+<span class="keyword">void</span> <span class="func">ClampRodAuto_Run</span>(<span class="keyword">void</span>);   <span class="comment">// 每周期调用</span>
+
+<span class="comment">/* 触发命令 */</span>
+<span class="keyword">void</span> <span class="func">ClampRodAuto_StartPick</span>(<span class="keyword">void</span>);
+<span class="keyword">void</span> <span class="func">ClampRodAuto_StartPlace</span>(<span class="keyword">void</span>);
+<span class="keyword">void</span> <span class="func">ClampRodAuto_StartChange</span>(<span class="keyword">void</span>);
+<span class="keyword">void</span> <span class="func">ClampRodAuto_Abort</span>(<span class="keyword">void</span>);  <span class="comment">// 紧急停止</span>
+
+<span class="comment">/* 状态查询 */</span>
+ClampRodState <span class="func">ClampRodAuto_GetState</span>(<span class="keyword">void</span>);
+uint8_t       <span class="func">ClampRodAuto_IsBusy</span>(<span class="keyword">void</span>);
+uint8_t       <span class="func">ClampRodAuto_HasError</span>(<span class="keyword">void</span>);
+
+<span class="pre">#endif</span></code></pre>
+    </div>
+
+    <div>
+      <h4 style="color:var(--accent);">📄 clamp_rod_auto.c (结构框架)</h4>
+      <pre><code><span class="pre">#include</span> <span class="string">"clamp_rod_auto.h"</span>
+<span class="pre">#include</span> <span class="string">"weapon.h"</span>
+<span class="pre">#include</span> <span class="string">"arm.h"</span>
+<span class="pre">#include</span> <span class="string">"kfs.h"</span>
+<span class="pre">#include</span> <span class="string">"lift.h"</span>
+<span class="pre">#include</span> <span class="string">"remote_control.h"</span>
+<span class="pre">#include</span> <span class="string">"tim.h"</span>
+<span class="pre">#include</span> <span class="string">"motor_control.h"</span>
+<span class="pre">#include</span> <span class="string">"cmsis_os.h"</span>
+
+<span class="comment">/* PWM 参数 */</span>
+<span class="pre">#define</span> SERVO_PWM_MID      <span class="number">1600U</span>
+<span class="pre">#define</span> SERVO_PWM_RELEASE  <span class="number">1450U</span>
+<span class="pre">#define</span> SERVO_PWM_UPRIGHT  <span class="number">2100U</span>
+<span class="pre">#define</span> SLIDE_PWM_PUSH     <span class="number">600U</span>
+<span class="pre">#define</span> SLIDE_PWM_RETRACT  <span class="number">2500U</span>
+
+<span class="comment">/* 超时配置 (ms) */</span>
+<span class="pre">#define</span> TIMEOUT_ARM_MOVE      <span class="number">5000U</span>
+<span class="pre">#define</span> TIMEOUT_CLAW_MOVE     <span class="number">3000U</span>
+<span class="pre">#define</span> TIMEOUT_SERVO_DELAY   <span class="number">1000U</span>
+<span class="pre">#define</span> TIMEOUT_MOTOR_COLLECT <span class="number">3000U</span>
+<span class="pre">#define</span> TIMEOUT_TOTAL_PICK    <span class="number">15000U</span>
+<span class="pre">#define</span> TIMEOUT_TOTAL_PLACE   <span class="number">13000U</span>
+
+<span class="keyword">static</span> ClampRodAutoCtx g_clamp_rod;
+
+<span class="comment">/* === 硬件操作原子函数 === */</span>
+<span class="keyword">static void</span> <span class="func">servo_set</span>(uint16_t pwm_us) {
+    <span class="func">__HAL_TIM_SET_COMPARE</span>(&amp;htim2, TIM_CHANNEL_1, pwm_us);
+}
+<span class="keyword">static void</span> <span class="func">slide_set</span>(uint16_t pwm_us) {
+    <span class="func">__HAL_TIM_SET_COMPARE</span>(&amp;htim2, TIM_CHANNEL_3, pwm_us);
+}
+<span class="keyword">static uint8_t</span> <span class="func">is_rod_present</span>(<span class="keyword">void</span>) {
+    <span class="keyword">return</span> (<span class="func">HAL_GPIO_ReadPin</span>(GPIOE, GPIO_PIN_9) == GPIO_PIN_RESET);
+}
+
+<span class="comment">/* 状态机实现 → 见完整代码 */</span>
+<span class="keyword">void</span> <span class="func">ClampRodAuto_Run</span>(<span class="keyword">void</span>) { ... }</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SECTION 7: 集成方案 ============ -->
+<h2 id="s7">🔌 7. 集成方案</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge badge-st">INTEGRATION</span> 与现有系统的集成</div>
+
+  <h3>7.1 触发方式</h3>
+  <div class="flow-row">
+    <div class="flow-box">遥控器 button</div><span class="flow-arrow">→</span>
+    <div class="flow-box">BUT_check() 边沿检测</div><span class="flow-arrow">→</span>
+    <div class="flow-box">ClampRodAuto_StartChange()</div><span class="flow-arrow">→</span>
+    <div class="flow-box" style="border-color:var(--green);">状态机自动执行</div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-box">上位机 UART 指令</div><span class="flow-arrow">→</span>
+    <div class="flow-box">REMOTE_ParseData() 解析</div><span class="flow-arrow">→</span>
+    <div class="flow-box">ClampRodAuto_StartPick()</div><span class="flow-arrow">→</span>
+    <div class="flow-box" style="border-color:var(--green);">状态机自动执行</div>
+  </div>
+
+  <h3>7.2 调度方式</h3>
+  <div class="grid-2">
+    <div>
+      <p style="color:var(--accent);font-weight:700;">方案A: FreeRTOS 独立任务</p>
+      <pre><code><span class="comment">// 创建独立任务，优先级低于运动控制</span>
+<span class="func">osThreadNew</span>(ClampRodAuto_Task, <span class="keyword">NULL</span>, &amp;clamp_rod_auto_attributes);
+<span class="comment">// 优点: 独立栈空间，可阻塞等待
+// 缺点: 多一个任务，增加调度开销</span></code></pre>
+    </div>
+    <div>
+      <p style="color:var(--green);font-weight:700;">✅ 方案B: 在 Free_Task 中轮询 (推荐)</p>
+      <pre><code><span class="comment">// 在 Free_Task() 循环中添加:</span>
+<span class="keyword">if</span> (g_clamp_rod.state != CLAMP_ROD_STATE_IDLE) {
+    <span class="func">ClampRodAuto_Run</span>();
+} <span class="keyword">else</span> {
+    <span class="comment">// 检测触发条件</span>
+    <span class="keyword">if</span> (BUT_flag.button_new == <span class="number">1</span>) {
+        <span class="func">ClampRodAuto_StartChange</span>();
+    }
+}
+<span class="comment">// 优点: 零额外开销，复用现有任务
+// 缺点: 每个周期只执行一步 (这正好是状态机特性)</span></code></pre>
+    </div>
+  </div>
+
+  <h3>7.3 安全保护</h3>
+  <table>
+    <tr><th>保护机制</th><th>实现</th></tr>
+    <tr><td>阶段超时</td><td>每个状态有独立超时 (1~5s)，超时→ERROR→IDLE恢复</td></tr>
+    <tr><td>总流程超时</td><td>pick 15s / place 13s，防止无限等待</td></tr>
+    <tr><td>遥控器失联</td><td>RCctrl.rc_lost → 立即 Abort() → 机械臂保持+夹爪松开</td></tr>
+    <tr><td>传感器检查</td><td>PE9 在关键阶段验证枪杆状态，不匹配则重试或报错</td></tr>
+    <tr><td>软限位保护</td><td>各电机位置在 arm/weapon/kfs 层已有范围限制</td></tr>
+    <tr><td>重试机制</td><td>retry_count ≤ 3，超阈值 → ERROR 需人工介入</td></tr>
+  </table>
+</div>
+
+<!-- Summary -->
+<h2>📋 总结</h2>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-header">📁 新增文件</div>
+    <table>
+      <tr><td><code class="mono">user/inc/clamp_rod_auto.h</code></td><td>头文件 (~80行)</td></tr>
+      <tr><td><code class="mono">user/src/clamp_rod_auto.c</code></td><td>实现文件 (~350行)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-header">🔧 修改文件</div>
+    <table>
+      <tr><td><code class="mono">Can_Task.c</code></td><td>Free_Task 中集成调用</td></tr>
+      <tr><td><code class="mono">timer.c</code></td><td>BUT_check 扩展到所有模式</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-header">🎯 关键指标</div>
+    <table>
+      <tr><td>取枪耗时</td><td>~7-9 秒</td></tr>
+      <tr><td>放枪耗时</td><td>~5-7 秒</td></tr>
+      <tr><td>换枪耗时</td><td>~9-12 秒</td></tr>
+      <tr><td>代码增量</td><td>~430 行</td></tr>
+      <tr><td>错误恢复</td><td>自动/半自动</td></tr>
+    </table>
+  </div>
+</div>
+
+<p style="text-align:center; color:var(--muted); margin:40px 0; padding:20px; border-top:1px solid var(--border);">
+  RC26_H7_R1 夹枪杆全流程自动化方案 v1.0 &nbsp;|&nbsp; 2026-07-02 &nbsp;|&nbsp; 仅分析 R1 代码 (RC26_H7_R1(new)\user\)
+</p>
+
+</div>
+</body>
+</html>

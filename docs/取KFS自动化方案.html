@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取KFS全流程自动化 - 方案设计 v3</title>
+<style>
+  :root {
+    --bg: #0b1120; --card: #111827; --border: #1e293b; --text: #e2e8f0;
+    --muted: #94a3b8; --accent: #38bdf8; --green: #4ade80; --yellow: #facc15;
+    --red: #f87171; --purple: #c084fc; --orange: #fb923c; --teal: #2dd4bf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.65; padding:20px; }
+  .container { max-width:1320px; margin:0 auto; }
+  h1 { font-size:2.2em; text-align:center; margin:16px 0 8px; background:linear-gradient(135deg,var(--teal),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  h2 { font-size:1.4em; color:var(--teal); border-bottom:2px solid var(--border); padding-bottom:8px; margin:32px 0 16px; }
+  h3 { font-size:1.1em; color:var(--purple); margin:18px 0 8px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin:16px 0; }
+  .card-header { font-size:1.05em; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.7em; font-weight:700; }
+  .b-g { background:#0f2d1e; color:var(--green); } .b-b { background:#0f2d3d; color:var(--teal); }
+  .b-p { background:#2d0f3d; color:var(--purple); } .b-o { background:#2d1e0f; color:var(--orange); }
+  .b-y { background:#2d2d0f; color:var(--yellow); }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+  table { width:100%; border-collapse:collapse; margin:8px 0; }
+  th { background:#0c1a2b; color:var(--teal); padding:8px 10px; text-align:left; font-weight:600; font-size:0.84em; }
+  td { padding:8px 10px; border-bottom:1px solid var(--border); font-size:0.84em; vertical-align:top; }
+  tr:hover td { background:rgba(45,212,191,0.03); }
+  .mono { font-family:'Cascadia Code','Fira Code',Consolas,monospace; font-size:0.81em; }
+
+  pre { background:#090d14; border:1px solid var(--border); border-radius:8px; padding:10px 14px; overflow-x:auto; font-size:0.78em; line-height:1.5; }
+  code { font-family:'Cascadia Code','Fira Code',Consolas,monospace; }
+  .kw { color:#ff7b72; } .tp { color:#79c0ff; } .fn { color:#d2a8ff; }
+  .cm { color:#8b949e; font-style:italic; } .str { color:#a5d6ff; } .num { color:#79c0ff; }
+  .hl { background:rgba(250,204,21,0.12); padding:1px 5px; border-radius:3px; }
+  .kv { background:rgba(74,222,128,0.12); padding:1px 5px; border-radius:3px; font-family:monospace; }
+  .rt { display:inline-block; background:rgba(111,207,151,0.12); color:#6fcf97; padding:1px 6px; border-radius:3px; font-size:0.76em; border:1px solid rgba(111,207,151,0.25); }
+
+  .flow-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0; padding:8px 14px; background:rgba(45,212,191,0.04); border-radius:8px; border-left:3px solid var(--teal); }
+  .flow-box { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:0.82em; white-space:nowrap; }
+  .flow-arrow { color:var(--green); font-weight:700; font-size:1.2em; }
+
+  .state-flow { display:flex; flex-wrap:wrap; gap:5px; align-items:center; justify-content:center; margin:12px 0; }
+  .st { background:linear-gradient(135deg,#0f2d3d,#111827); border:2px solid var(--teal); border-radius:10px; padding:8px 12px; text-align:center; min-width:90px; }
+  .st.go { border-color:var(--green); background:linear-gradient(135deg,#0f2d1e,#111827); }
+  .st.done { border-color:var(--accent); }
+  .st-arr { font-size:1.3em; color:var(--muted); }
+
+  .step-n { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; font-weight:700; font-size:0.8em; margin-right:6px; }
+  .sn1 { background:#1e3a1e; color:var(--green); } .sn2 { background:#1e1e3a; color:var(--accent); }
+  .sn3 { background:#3a2e1e; color:var(--orange); } .sn4 { background:#3a1e3a; color:var(--purple); }
+
+  .toc { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0; }
+  .toc a { color:var(--teal); text-decoration:none; padding:4px 10px; border:1px solid var(--border); border-radius:16px; font-size:0.84em; transition:all 0.2s; }
+  .toc a:hover { background:rgba(45,212,191,0.1); border-color:var(--teal); }
+
+  .timeline-bar { display:flex; height:32px; border-radius:6px; overflow:hidden; margin:10px 0; }
+  .timeline-bar > div { display:flex; align-items:center; justify-content:center; font-size:0.68em; font-weight:600; color:#fff; }
+  .tb1 { background:#1a6b4a; } .tb2 { background:#1a4a6b; } .tb3 { background:#6b4a1a; } .tb4 { background:#4a1a6b; }
+
+  .fn-table td:first-child { font-family:monospace; font-size:0.82em; white-space:nowrap; }
+  .fn-table td:nth-child(2) { font-size:0.8em; color:var(--muted); }
+
+  hr { border:none; border-top:1px solid var(--border); margin:22px 0; }
+  .tag-row { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🤖 取KFS全流程自动化方案 v3</h1>
+<p class="subtitle" style="text-align:center;color:var(--muted);margin-bottom:22px;font-size:1em;">
+  兼容性优先 — 最大化复用 arm.c / kfs.c / motor_control.c / dm_motor.c / pid.c / common.c 已有函数<br>
+  目标: <code>RC26_H7_R1(new)\user\</code> &nbsp;|&nbsp; arm.c <b>零修改</b>
+</p>
+
+<div class="toc">
+  <a href="#s0">📚 可复用函数全集</a>
+  <a href="#s1">🗺️ arm.c 姿态映射</a>
+  <a href="#s2">🧠 状态机</a>
+  <a href="#s3">💻 实现代码</a>
+  <a href="#s4">🔌 集成 & 安全</a>
+</div>
+
+<!-- ===== SECTION 0: 可复用函数全集 ===== -->
+<h2 id="s0">📚 1. 可复用函数全集 — 全局搜索结果</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge b-g">REUSE</span> 以下所有函数均来自 R1 现有代码，自动化代码直接调用，零重写</div>
+
+  <div class="grid-3">
+    <div>
+      <h3 style="color:var(--teal);">🔌 GPIO & PWM 操作</h3>
+      <table class="fn-table">
+        <tr><td><code>HAL_GPIO_WritePin(GPIOE,14, SET/RESET)</code></td><td>气泵1 (吸盘) — kfs.c L27-28</td></tr>
+        <tr><td><code>HAL_GPIO_WritePin(GPIOC,12, SET/RESET)</code></td><td>气泵2 (吸盘) — kfs.c L27-28</td></tr>
+        <tr><td><code>__HAL_TIM_SET_COMPARE(&htim2, CH1, us)</code></td><td>舵机PWM — Can_Task.c L288</td></tr>
+        <tr><td><code>__HAL_TIM_SET_COMPARE(&htim2, CH3, us)</code></td><td>滑台PWM — Can_Task.c L299</td></tr>
+        <tr><td><code>HAL_GPIO_ReadPin(GPIOE, 9)</code></td><td>枪杆检测 — R2 clamp_head_ctrl</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--green);">⚙️ CAN 电机控制</h3>
+      <table class="fn-table">
+        <tr><td><code>DMset_mit_data(obj, P, V, KP, KD, T)</code></td><td>DM电机MIT模式 — dm_motor.c L162</td></tr>
+        <tr><td><code>obj->set_mit_data(obj, P, V, KP, KD, T)</code></td><td>方法指针版 — dm_motor.h L52</td></tr>
+        <tr><td><code>DJIset_motor_data(hcan, id, d1..d4)</code></td><td>大疆电机CAN — dji_motor.c L82</td></tr>
+        <tr><td><code>Motor_PID_Calculate(obj, input)</code></td><td>级联PID — dji_motor.c L15</td></tr>
+        <tr><td><code>obj->PID_Calculate(obj, input)</code></td><td>方法指针版 — dji_motor.c L150</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--purple);">📐 运动控制 & PID</h3>
+      <table class="fn-table">
+        <tr><td><code>in_place(t_pos, *p, c_pos, *sp, ...)</code></td><td>单轴到位 — motor_control.c L10</td></tr>
+        <tr><td><code>in_place_1(t_pos, *p, c_pos, *sp, ...)</code></td><td>单轴到位(变体) — motor_control.c L37</td></tr>
+        <tr><td><code>in_place_fast(t_pos, ..., prior_sp, prior_diff)</code></td><td>快速到位 — motor_control.c L64</td></tr>
+        <tr><td><code>hold_step(v1, v2, *T)</code></td><td>速度同步PID — motor_control.c L118</td></tr>
+        <tr><td><code>side_by_side(p1, p2, *T)</code></td><td>位置同步PID — motor_control.c L144</td></tr>
+        <tr><td><code>f_PID_Calculate(pid, target, measure)</code></td><td>通用PID — pid.c</td></tr>
+        <tr><td><code>VAL_LIMIT(x, min, max)</code></td><td>值限幅宏 — pid.h L19</td></tr>
+        <tr><td><code>ABS(x)</code></td><td>绝对值宏 — pid.h L24</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--orange);">🦾 机械臂专属</h3>
+      <table class="fn-table">
+        <tr><td><code>Arm_Inverse_Solution(*arm)</code></td><td>逆运动学 (s,h)→(θ₁,θ₂,θ₃) — arm.c L13</td></tr>
+        <tr><td><code>Torque_Comp_global(a1,a2,a3)</code></td><td>重力前馈补偿 — arm.c L70</td></tr>
+        <tr><td><code>Arm_task(a1,a2,a3)</code></td><td>机械臂总控 (12种mode) — arm.c L95</td></tr>
+      </table>
+      <h3 style="color:var(--yellow); margin-top:12px;">🛠️ 通用工具</h3>
+      <table class="fn-table">
+        <tr><td><code>clampf(v, lo, hi)</code></td><td>浮点限幅 — common.c L29</td></tr>
+        <tr><td><code>common_now_ms()</code></td><td>获取tick(ms) — common.c L24</td></tr>
+        <tr><td><code>wrap_deg_180(deg)</code></td><td>角度归一化 — common.c L11</td></tr>
+        <tr><td><code>data_convert(src, lo, hi, dst_lo, dst_hi)</code></td><td>线性映射 — remote_control.c L11</td></tr>
+        <tr><td><code>vec2_limit(*vx, *vy, vmax)</code></td><td>向量限幅 — common.c L42</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--red);">📡 KFS & 遥控</h3>
+      <table class="fn-table">
+        <tr><td><code>kfs_mode()</code></td><td>气泵开关 — kfs.c L18</td></tr>
+        <tr><td><code>kfs_catch_mode()</code></td><td>夹爪开合 — kfs.c L36</td></tr>
+        <tr><td><code>remote_control_read(src, lo, mid, hi, d_lo, d_mid, d_hi)</code></td><td>遥杆映射(带死区) — remote_control.c L213</td></tr>
+        <tr><td><code>remote_control_readaccel(src, lo, hi, d_lo, d_hi)</code></td><td>加速映射 — remote_control.c L274</td></tr>
+      </table>
+      <h3 style="color:var(--pink); margin-top:12px;">📋 参考模式</h3>
+      <table class="fn-table">
+        <tr><td><code>auto_mission()</code></td><td>已有自动流程模板 (auto_flag 步进) — auto_mode.c L7</td></tr>
+        <tr><td><code>auto_inplace(x, y, w)</code></td><td>底盘自动到位 — auto_mode.c L241</td></tr>
+        <tr><td><code>BUT_check()</code></td><td>按钮边沿检测 — timer.c L12</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:var(--accent);">🏗️ 代码模式参考</h3>
+      <table class="fn-table">
+        <tr><td><code>auto_flag</code> 步进模式</td><td>auto_mode.c — 已有"等待→到位→下一步"模板</td></tr>
+        <tr><td><code>arm mode 3</code> 多阶段</td><td>arm.c L142-174 — if(arm_2 > -1.6)→B→C</td></tr>
+        <tr><td><code>LF_Task/HF_Task</code></td><td>Can_Task.c — 100Hz/200Hz 调度模板</td></tr>
+        <tr><td><code>Free_Task</code> 延时序列</td><td>Can_Task.c L272-330 — vTaskDelay 步进</td></tr>
+        <tr><td><code>float kfs_1[5]</code></td><td>arm.c L97 — {pos, spd, kp, kd, torque} 五元组</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 1: arm.c 姿态→步骤 精确映射 ===== -->
+<h2 id="s1">🗺️ 2. arm.c 已有姿态 → 4步骤 精确映射</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge b-b">MAPPING</span> 每一行代码的来源都标注了 arm.c 行号</div>
+
+  <table>
+    <tr><th width="50">步骤</th><th width="130">需求</th><th>复用 arm.c 哪段代码</th><th>自动化代码做什么 (复制/调用已有逻辑)</th></tr>
+    <tr>
+      <td><span class="step-n sn1">1</span></td><td><b>开吸盘</b></td>
+      <td>
+        <span class="rt">kfs.c L27-28</span> kfs_mode() 中的 GPIO 操作
+      </td>
+      <td>
+        <code>HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);</code><br>
+        <code>HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);</code><br>
+        + <code>common_now_ms()</code> 延时 200ms
+      </td>
+    </tr>
+    <tr>
+      <td><span class="step-n sn2">2</span></td><td><b>摆出取KFS<br>姿态</b></td>
+      <td>
+        <span class="rt">arm.c L117-125</span> mode 0 完整逻辑<br>
+        <span class="rt">arm.c L235-243</span> mode 5 参数<br>
+        <span class="rt">arm.c L249-257</span> mode 6 参数
+      </td>
+      <td>
+        <b>直接复制 arm.c L117-125 (mode 0):</b><br>
+        ① <code>arm.mode=0; arm.s=0.32f; arm.h=h_target;</code><br>
+        ② <code>angles = Arm_Inverse_Solution(&arm);</code><br>
+        ③ <code>Torque = Torque_Comp_global(&kfs_arm_1, &kfs_arm_2, &kfs_arm_3);</code><br>
+        ④ <code>kfs_arm_1.set_mit_data(...θ₁+0.43, 0, 70.0, 5.0, -0.25*T₁)</code><br>
+        ⑤ <code>kfs_arm_2.set_mit_data(...-θ₂, 0, 50.0, 4.5, -0.6*T₂)</code><br>
+        ⑥ <code>kfs_arm_3.set_mit_data(...25*(π/2+p1-0.43+p2-0.08π), 0, 0.2, 0.15, 0.8*T₃)</code><br>
+        ✅ 到位: <code>ABS(p1-target1)<0.03 && ABS(p2-target2)<0.03 && ABS(p3-target3)<2.0</code>
+      </td>
+    </tr>
+    <tr>
+      <td><span class="step-n sn3">3</span></td><td><b>前推</b></td>
+      <td>
+        <span class="rt">arm.c L28-36</span> 逆解 case 0<br>
+        <span class="rt">arm.c L117-125</span> set_mit_data 参数<br>
+        <span class="rt">common.c L29</span> clampf() 限幅
+      </td>
+      <td>
+        <b>唯一新增变量:</b> <code>push_s</code>，每周期 <code>push_s += 0.005f</code><br>
+        <b>其余全部复用 Step2 的②~⑥ (逆解+补偿+发送):</b><br>
+        <code>push_s = clampf(push_s + 0.005f, 0.32f, 0.60f);</code><br>
+        <code>arm.s = push_s;</code> ← 替代 <code>data_convert(RCctrl.accel,...)</code><br>
+        <code>arm.h = h_target;</code> (不变)<br>
+        然后同 Step2 ②~⑥<code class="mono">Arm_Inverse_Solution</code> → <code class="mono">Torque_Comp_global</code> → <code class="mono">set_mit_data × 3</code><br>
+        ✅ 完成: <code>push_s >= 0.60f</code>
+      </td>
+    </tr>
+    <tr>
+      <td><span class="step-n sn4">4</span></td><td><b>回收</b></td>
+      <td>
+        <span class="rt">arm.c L142-168</span> mode 3 三阶段回收<br>
+        <span class="rt">motor_control.c L10</span> in_place()<br>
+        <span class="rt">motor_control.c L37</span> in_place_1()
+      </td>
+      <td>
+        <b>直接复制 arm.c L142-168 (mode 3) 三阶段:</b><br>
+        <b>A:</b> <code>if(arm_2.pos > -1.6f)</code> → <code>in_place(-1.6f, &kfs_2[0], arm_2.pos, &kfs_2[1], 0.6f, &kfs_2[2], 30.0f, &kfs_2[3], 5.0f, 4.0f, &kfs_2[4], -0.5*T₂, -2.0*T₂, 0.0f)</code><br>
+        <b>B:</b> <code>if(-2.92<arm_2<-1.6)</code> → <code>in_place(0.2f, ...)</code> + <code>in_place(-2.92f, ...)</code><br>
+        <b>C:</b> <code>if(arm_2 < -2.92)</code> → <code>arm_3.set_mit_data(-52.0,...)</code> + <code>arm_1.set_mit_data(0.6,...)</code> + <code>in_place_1(-4.3f, ...)</code><br>
+        ✅ 完成: <code>arm_2.pos < -4.2f</code>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== SECTION 2: 状态机 ===== -->
+<h2 id="s2">🧠 3. 状态机设计 (参考 auto_mode.c auto_flag 步进模式)</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge b-p">STATE</span> 参考 <code>auto_mode.c</code> 的 <code>auto_flag</code> 步进模式，每个状态只做一件事</div>
+
+  <div class="state-flow">
+    <div class="st"><b>IDLE</b><br><small style="color:var(--muted);">等触发</small></div>
+    <span class="st-arr">→</span>
+    <div class="st go"><b>S1_SUCKER</b><br><small style="color:var(--muted);">开吸盘</small></div>
+    <span class="st-arr">→</span>
+    <div class="st"><b>S2_POSE</b><br><small style="color:var(--muted);">摆姿态</small></div>
+    <span class="st-arr">→</span>
+    <div class="st"><b>S3_PUSH</b><br><small style="color:var(--muted);">前推 s递增</small></div>
+    <span class="st-arr">→</span>
+    <div class="st"><b>S4_RETRACT</b><br><small style="color:var(--muted);">回收 A→B→C</small></div>
+    <span class="st-arr">→</span>
+    <div class="st done"><b>DONE</b><br><small style="color:var(--muted);">→IDLE</small></div>
+  </div>
+
+  <table style="margin-top:14px;">
+    <tr><th width="80">状态</th><th>每周期执行</th><th>→下一状态条件</th><th>超时ms</th></tr>
+    <tr>
+      <td>S1_SUCKER</td>
+      <td><code>PE14→SET; PC12→SET;</code></td>
+      <td><code>common_now_ms() - t0 >= 200</code></td><td>500</td>
+    </tr>
+    <tr>
+      <td>S2_POSE</td>
+      <td>同 <span class="rt">arm.c L117-125</span> (逆解+补偿+set_mit_data×3)</td>
+      <td>三关节到位误差 &lt; 阈值</td><td>4000</td>
+    </tr>
+    <tr>
+      <td>S3_PUSH</td>
+      <td><code>push_s = clampf(push_s+0.005f, 0.32f, 0.60f)</code> → 逆解+发送(同S2)</td>
+      <td><code>push_s >= 0.60f</code></td><td>3000</td>
+    </tr>
+    <tr>
+      <td>S4_RETRACT</td>
+      <td>同 <span class="rt">arm.c L142-168</span> (三阶段 in_place 序列)</td>
+      <td><code>arm_2.pos < -4.2f</code></td><td>8000</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== SECTION 3: 实现代码 ===== -->
+<h2 id="s3">💻 4. 完整实现代码 (最大化复用)</h2>
+
+<div class="card">
+  <div class="card-header"><span class="badge b-g">CODE</span> pick_kfs_auto.h + pick_kfs_auto.c — 所有调用均标注 arm.c 来源</div>
+
+  <div class="grid-2">
+    <div>
+      <h3>📄 pick_kfs_auto.h</h3>
+      <pre><code><span class="cm">/**
+ * @file  pick_kfs_auto.h
+ * @brief 取KFS全流程自动化
+ *
+ * 设计原则:
+ *   1. arm.c 零修改 — 所有姿态参数直接复制 arm.c L115-258
+ *   2. motor_control.c 零修改 — in_place/in_place_1 直接调用
+ *   3. 参考 auto_mode.c auto_flag 步进模式
+ *   4. 参考 arm.c mode 3 多阶段回收模式
+ */</span>
+<span class="pre">#ifndef</span> __PICK_KFS_AUTO_H__
+<span class="pre">#define</span> __PICK_KFS_AUTO_H__
+
+<span class="pre">#include</span> <span class="str">"arm.h"</span>
+<span class="pre">#include</span> <span class="str">"common.h"</span>
+
+<span class="cm">/* KFS货架高度 (对应 arm mode 0/5/6 的 h 值) */</span>
+<span class="kw">typedef</span> <span class="kw">enum</span> {
+    PKFS_H_LOW  = <span class="num">0</span>,   <span class="cm">// h=0.230 → arm mode 0</span>
+    PKFS_H_MID  = <span class="num">1</span>,   <span class="cm">// h=0.435 → arm mode 5</span>
+    PKFS_H_HIGH = <span class="num">2</span>,   <span class="cm">// h=0.650 → arm mode 6</span>
+} PickKfsHeight;
+
+<span class="kw">typedef</span> <span class="kw">enum</span> {
+    PKFS_IDLE = <span class="num">0</span>,
+    PKFS_SUCKER_ON,    <span class="cm">// Step1: 复用 kfs.c L27-28 GPIO</span>
+    PKFS_ARM_POSE,     <span class="cm">// Step2: 复用 arm.c L117-125 mode 0</span>
+    PKFS_ARM_PUSH,     <span class="cm">// Step3: 复用 arm.c L28-36 逆解 + s递增</span>
+    PKFS_ARM_RETRACT,  <span class="cm">// Step4: 复用 arm.c L142-168 mode 3</span>
+    PKFS_DONE,
+    PKFS_ERROR,
+} PickKfsState;
+
+<span class="kw">void</span> <span class="fn">PickKfsAuto_Init</span>(<span class="kw">void</span>);
+<span class="kw">void</span> <span class="fn">PickKfsAuto_Run</span>(<span class="kw">void</span>);
+<span class="kw">void</span> <span class="fn">PickKfsAuto_Start</span>(PickKfsHeight h);
+<span class="kw">void</span> <span class="fn">PickKfsAuto_Abort</span>(<span class="kw">void</span>);
+PickKfsState <span class="fn">PickKfsAuto_GetState</span>(<span class="kw">void</span>);
+uint8_t      <span class="fn">PickKfsAuto_IsBusy</span>(<span class="kw">void</span>);
+
+<span class="pre">#endif</span></code></pre>
+    </div>
+    <div>
+      <h3>📄 pick_kfs_auto.c <span style="font-size:0.8em;color:var(--muted);">(~250行)</span></h3>
+      <pre><code><span class="pre">#include</span> <span class="str">"pick_kfs_auto.h"</span>
+<span class="pre">#include</span> <span class="str">"kfs.h"</span>           <span class="cm">// kfs_arm_1/2/3, kfs_catch 全局变量</span>
+<span class="pre">#include</span> <span class="str">"motor_control.h"</span> <span class="cm">// in_place(), in_place_1()</span>
+<span class="pre">#include</span> <span class="str">"dm_motor.h"</span>       <span class="cm">// DMset_mit_data, set_mit_data</span>
+<span class="pre">#include</span> <span class="str">"pid.h"</span>            <span class="cm">// ABS(), VAL_LIMIT()</span>
+<span class="pre">#include</span> <span class="str">"common.h"</span>         <span class="cm">// clampf(), common_now_ms()</span>
+<span class="pre">#include</span> <span class="str">"cmsis_os.h"</span>
+
+<span class="cm">/* ===== 参数表: 来自 arm.c mode 0/5/6 ===== */</span>
+<span class="kw">static const</span> <span class="kw">float</span> HEIGHT_CFG[<span class="num">3</span>] = {
+    <span class="num">0.230f</span>, <span class="cm">// LOW  → arm.c L119</span>
+    <span class="num">0.435f</span>, <span class="cm">// MID  → arm.c L237</span>
+    <span class="num">0.650f</span>, <span class="cm">// HIGH → arm.c L251</span>
+};
+
+<span class="kw">static const</span> <span class="kw">float</span> S_INIT = <span class="num">0.32f</span>;  <span class="cm">// arm.c L118/236/250</span>
+<span class="kw">static const</span> <span class="kw">float</span> S_MAX  = <span class="num">0.60f</span>;  <span class="cm">// arm.c L118/236/250</span>
+<span class="kw">static const</span> <span class="kw">float</span> PUSH_STEP = <span class="num">0.005f</span>;
+
+<span class="cm">/* ===== 上下文 ===== */</span>
+<span class="kw">static</span> <span class="kw">struct</span> {
+    PickKfsState state;
+    <span class="kw">float</span>  h_target;
+    <span class="kw">float</span>  push_s;
+    uint32_t t0;
+    uint8_t  retract_phase;  <span class="cm">// 0=A, 1=B, 2=C (参考 arm mode 3)</span>
+    uint8_t  error_code;
+} g;
+
+<span class="cm">/* 高度选择 */</span>
+<span class="kw">static float</span> <span class="fn">cfg_h</span>(PickKfsHeight h) {
+    <span class="kw">return</span> HEIGHT_CFG[h];
+}
+
+<span class="cm">/* ===== 原子操作: 开吸盘 (复用 kfs.c L27-28) ===== */</span>
+<span class="kw">static void</span> <span class="fn">sucker_set</span>(uint8_t on) {
+    GPIO_PinState s = on ? GPIO_PIN_SET : GPIO_PIN_RESET;
+    <span class="fn">HAL_GPIO_WritePin</span>(GPIOE, GPIO_PIN_14, s);
+    <span class="fn">HAL_GPIO_WritePin</span>(GPIOC, GPIO_PIN_12, s);
+}
+
+<span class="cm">/* ===== 机械臂三关节发送 (复制 arm.c L120-125) ===== */</span>
+<span class="kw">static void</span> <span class="fn">arm_send_kfs_pose</span>(<span class="kw">float</span> s, <span class="kw">float</span> h) {
+    <span class="kw">extern</span> Arm_Info_TypeDef arm;
+    <span class="kw">extern</span> ArmAnglesTypeDef angles;
+    <span class="kw">extern</span> ArmTorqueTypeDef Torque;
+
+    arm.mode = <span class="num">0</span>;           <span class="cm">// 逆解 case 0 → arm.c L28-36</span>
+    arm.s    = s;
+    arm.h    = h;
+
+    angles = <span class="fn">Arm_Inverse_Solution</span>(&amp;arm);           <span class="cm">// arm.c L13</span>
+    Torque = <span class="fn">Torque_Comp_global</span>(&amp;kfs_arm_1,       <span class="cm">// arm.c L70</span>
+                                  &amp;kfs_arm_2,
+                                  &amp;kfs_arm_3);
+
+    <span class="cm">// arm_1 → arm.c L123</span>
+    kfs_arm_1.<span class="fn">set_mit_data</span>(&amp;kfs_arm_1,
+        angles.theta_1 + <span class="num">0.43f</span>, <span class="num">0.0f</span>,
+        <span class="num">70.0f</span>, <span class="num">5.0f</span>, -<span class="num">0.25f</span> * Torque.Torque_1);
+    <span class="cm">// arm_2 → arm.c L124</span>
+    kfs_arm_2.<span class="fn">set_mit_data</span>(&amp;kfs_arm_2,
+        -angles.theta_2, <span class="num">0.0f</span>,
+        <span class="num">50.0f</span>, <span class="num">4.5f</span>, -<span class="num">0.6f</span> * Torque.Torque_2);
+    <span class="cm">// arm_3 → arm.c L125</span>
+    kfs_arm_3.<span class="fn">set_mit_data</span>(&amp;kfs_arm_3,
+        <span class="num">25.0f</span> * (PI/<span class="num">2.0f</span> + kfs_arm_1.position
+            - <span class="num">0.43f</span> + kfs_arm_2.position - PI * <span class="num">0.08f</span>),
+        <span class="num">0.0f</span>, <span class="num">0.2f</span>, <span class="num">0.15f</span>, <span class="num">0.8f</span> * Torque.Torque_3);
+}
+
+<span class="cm">/* ===== S2 到位判断 (参考 auto_mode.c L46-49) ===== */</span>
+<span class="kw">static uint8_t</span> <span class="fn">arm_pose_done</span>(<span class="kw">void</span>) {
+    <span class="kw">return</span> (<span class="fn">ABS</span>(kfs_arm_1.position - g.arm1_target) &lt; <span class="num">0.03f</span>) &amp;&amp;
+           (<span class="fn">ABS</span>(kfs_arm_2.position - g.arm2_target) &lt; <span class="num">0.03f</span>) &amp;&amp;
+           (<span class="fn">ABS</span>(kfs_arm_3.position - g.arm3_target) &lt; <span class="num">2.0f</span>);
+}
+
+<span class="cm">/* ===== S4 回收 (直接复制 arm.c L142-168 mode 3) ===== */</span>
+<span class="kw">static void</span> <span class="fn">arm_retract_tick</span>(<span class="kw">void</span>) {
+    <span class="kw">extern</span> ArmTorqueTypeDef Torque;
+    <span class="kw">float</span> kfs_1[<span class="num">5</span>], kfs_2[<span class="num">5</span>];
+    Torque = <span class="fn">Torque_Comp_global</span>(&amp;kfs_arm_1, &amp;kfs_arm_2, &amp;kfs_arm_3);
+
+    <span class="kw">if</span> (kfs_arm_2.position &gt; -<span class="num">1.6f</span>) {                    <span class="cm">// arm.c L146</span>
+        <span class="fn">in_place</span>(-<span class="num">1.6f</span>, &amp;kfs_2[<span class="num">0</span>], kfs_arm_2.position, &amp;kfs_2[<span class="num">1</span>],
+                  <span class="num">0.6f</span>, &amp;kfs_2[<span class="num">2</span>], <span class="num">30.0f</span>, &amp;kfs_2[<span class="num">3</span>], <span class="num">5.0f</span>, <span class="num">4.0f</span>,
+                  &amp;kfs_2[<span class="num">4</span>], -<span class="num">0.5f</span>*Torque.Torque_2, -<span class="num">2.0f</span>*Torque.Torque_2, <span class="num">0.0f</span>);
+        kfs_arm_2.<span class="fn">set_mit_data</span>(&amp;kfs_arm_2,
+            kfs_2[<span class="num">0</span>], kfs_2[<span class="num">1</span>], kfs_2[<span class="num">2</span>], kfs_2[<span class="num">3</span>], kfs_2[<span class="num">4</span>]);
+    }
+    <span class="kw">else if</span> (kfs_arm_2.position &gt; -<span class="num">2.92f</span>) {             <span class="cm">// arm.c L152</span>
+        <span class="fn">in_place</span>(<span class="num">0.2f</span>, &amp;kfs_1[<span class="num">0</span>], kfs_arm_1.position, &amp;kfs_1[<span class="num">1</span>],
+                  <span class="num">2.0f</span>, &amp;kfs_1[<span class="num">2</span>], <span class="num">55.0f</span>, &amp;kfs_1[<span class="num">3</span>], <span class="num">5.0f</span>, <span class="num">5.0f</span>,
+                  &amp;kfs_1[<span class="num">4</span>], -<span class="num">0.5f</span>*Torque.Torque_1, -<span class="num">0.5f</span>*Torque.Torque_1, <span class="num">0.3f</span>);
+        kfs_arm_1.<span class="fn">set_mit_data</span>(&amp;kfs_arm_1,
+            kfs_1[<span class="num">0</span>], kfs_1[<span class="num">1</span>], kfs_1[<span class="num">2</span>], kfs_1[<span class="num">3</span>], kfs_1[<span class="num">4</span>]);
+        <span class="fn">in_place</span>(-<span class="num">2.92f</span>, &amp;kfs_2[<span class="num">0</span>], kfs_arm_2.position, &amp;kfs_2[<span class="num">1</span>],
+                  <span class="num">0.1f</span>, &amp;kfs_2[<span class="num">2</span>], <span class="num">30.0f</span>, &amp;kfs_2[<span class="num">3</span>], <span class="num">5.0f</span>, <span class="num">4.0f</span>,
+                  &amp;kfs_2[<span class="num">4</span>], -<span class="num">0.2f</span>*Torque.Torque_2, -<span class="num">1.8f</span>*Torque.Torque_2, <span class="num">0.0f</span>);
+        kfs_arm_2.<span class="fn">set_mit_data</span>(&amp;kfs_arm_2,
+            kfs_2[<span class="num">0</span>], kfs_2[<span class="num">1</span>], kfs_2[<span class="num">2</span>], kfs_2[<span class="num">3</span>], kfs_2[<span class="num">4</span>]);
+    }
+    <span class="kw">else</span> {                                            <span class="cm">// arm.c L161</span>
+        kfs_arm_3.<span class="fn">set_mit_data</span>(&amp;kfs_arm_3,
+            -<span class="num">52.0f</span>, <span class="num">0.0f</span>, <span class="num">0.13f</span>, <span class="num">0.6f</span>, <span class="num">1.0f</span>*Torque.Torque_3);
+        kfs_arm_1.<span class="fn">set_mit_data</span>(&amp;kfs_arm_1,
+            <span class="num">0.6f</span>, <span class="num">0.0f</span>, <span class="num">60.0f</span>, <span class="num">5.0f</span>, -<span class="num">0.8f</span>*Torque.Torque_1);
+        <span class="fn">in_place_1</span>(-<span class="num">4.3f</span>, &amp;kfs_2[<span class="num">0</span>], kfs_arm_2.position, &amp;kfs_2[<span class="num">1</span>],
+                    -<span class="num">0.0f</span>, &amp;kfs_2[<span class="num">2</span>], <span class="num">65.0f</span>, &amp;kfs_2[<span class="num">3</span>], <span class="num">3.0f</span>, <span class="num">5.0f</span>,
+                    &amp;kfs_2[<span class="num">4</span>], -<span class="num">0.12f</span>*Torque.Torque_2, -<span class="num">1.0f</span>*Torque.Torque_2, <span class="num">0.28f</span>);
+        kfs_arm_2.<span class="fn">set_mit_data</span>(&amp;kfs_arm_2,
+            kfs_2[<span class="num">0</span>], kfs_2[<span class="num">1</span>], kfs_2[<span class="num">2</span>], kfs_2[<span class="num">3</span>], kfs_2[<span class="num">4</span>]);
+    }
+}
+
+<span class="cm">/* ===== 主状态机 ===== */</span>
+<span class="kw">void</span> <span class="fn">PickKfsAuto_Run</span>(<span class="kw">void</span>) {
+    uint32_t now = <span class="fn">common_now_ms</span>();
+    <span class="kw">switch</span> (g.state) {
+    <span class="kw">case</span> PKFS_SUCKER_ON:
+        <span class="fn">sucker_set</span>(<span class="num">1</span>);
+        <span class="kw">if</span> (now - g.t0 &gt;= <span class="num">200</span>) { g.state = PKFS_ARM_POSE; g.t0 = now; }
+        <span class="kw">break</span>;
+    <span class="kw">case</span> PKFS_ARM_POSE:
+        <span class="fn">arm_send_kfs_pose</span>(S_INIT, g.h_target);
+        <span class="kw">if</span> (<span class="fn">arm_pose_done</span>()) {
+            g.push_s = S_INIT; g.state = PKFS_ARM_PUSH; g.t0 = now;
+        }
+        <span class="kw">break</span>;
+    <span class="kw">case</span> PKFS_ARM_PUSH:
+        g.push_s = <span class="fn">clampf</span>(g.push_s + PUSH_STEP, S_INIT, S_MAX);
+        <span class="fn">arm_send_kfs_pose</span>(g.push_s, g.h_target);
+        <span class="kw">if</span> (g.push_s &gt;= S_MAX) { g.state = PKFS_ARM_RETRACT; g.t0 = now; }
+        <span class="kw">break</span>;
+    <span class="kw">case</span> PKFS_ARM_RETRACT:
+        <span class="fn">arm_retract_tick</span>();
+        <span class="kw">if</span> (kfs_arm_2.position &lt; -<span class="num">4.2f</span>) { g.state = PKFS_DONE; }
+        <span class="kw">break</span>;
+    }
+}</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 4: 集成 ===== -->
+<h2 id="s4">🔌 5. 集成方案 & 安全保护</h2>
+
+<div class="card">
+  <div class="grid-2">
+    <div>
+      <h3>调度位置: LF_Task()</h3>
+      <pre><code><span class="cm">// Can_Task.c LF_Task() — 参考现有 auto_mode 调用方式</span>
+<span class="kw">void</span> <span class="fn">LF_Task</span>(<span class="kw">void const</span> * argument) {
+    <span class="kw">for</span>(;;) {
+        <span class="cm">// ... 现有 kfs_mode(), weapon_hold() 等 ...</span>
+
+        <span class="cm">// === 新增: 取KFS自动化 (2行) ===</span>
+        <span class="kw">if</span> (<span class="fn">PickKfsAuto_IsBusy</span>()) {
+            <span class="fn">PickKfsAuto_Run</span>();
+        }
+
+        <span class="fn">osDelay</span>(<span class="num">5</span>);
+    }
+}</code></pre>
+
+      <h3 style="margin-top:16px;">触发方式</h3>
+      <div class="flow-row">
+        <div class="flow-box">遥控器 zone=1<br>新 key 值(如 key=7)</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box">Arm_task()<br>检测触发条件</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box" style="border-color:var(--green);">PickKfsAuto_Start()</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box" style="border-color:var(--green);">自动执行4步</div>
+      </div>
+    </div>
+    <div>
+      <h3>安全保护 (全部复用已有机制)</h3>
+      <table>
+        <tr><th>保护</th><th>实现</th><th>复用来源</th></tr>
+        <tr><td>阶段超时</td><td><code>now - g.t0 > TIMEOUT</code> → ERROR</td><td>auto_mode 模式</td></tr>
+        <tr><td>遥控失联</td><td><code>RCctrl.rc_lost</code> → Abort</td><td>Can_Task.c L23</td></tr>
+        <tr><td>值限幅</td><td><code>clampf()</code> 限 s 范围</td><td>common.c L29</td></tr>
+        <tr><td>宏限幅</td><td><code>VAL_LIMIT()</code></td><td>pid.h L19</td></tr>
+        <tr><td>到位死区</td><td><code>ABS(err) < threshold</code></td><td>auto_mode.c L18/46/98</td></tr>
+        <tr><td>重力补偿</td><td><code>Torque_Comp_global()</code></td><td>arm.c L70</td></tr>
+        <tr><td>关节限位</td><td>DM电机 P_MAX 硬限幅</td><td>dm_motor.c L186-203</td></tr>
+        <tr><td>互斥控制</td><td><code>if(IsBusy()) skip Arm_task</code></td><td>新加判断</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 变更总结 -->
+<div class="card">
+  <div class="card-header"><span class="badge b-y">SUMMARY</span> 文件变更 & 兼容性</div>
+  <table>
+    <tr><th>文件</th><th>操作</th><th>行数</th><th>说明</th></tr>
+    <tr>
+      <td><code class="mono">user/inc/pick_kfs_auto.h</code></td>
+      <td style="color:var(--green);">➕ 新增</td><td>~40</td>
+      <td>状态定义 + 6个公开接口</td>
+    </tr>
+    <tr>
+      <td><code class="mono">user/src/pick_kfs_auto.c</code></td>
+      <td style="color:var(--green);">➕ 新增</td><td>~250</td>
+      <td>状态机实现，所有调用均标注 arm.c 来源行号</td>
+    </tr>
+    <tr>
+      <td><code class="mono">Can_Task.c</code></td>
+      <td style="color:var(--orange);">✏️ 改2行</td>
+      <td>+5</td>
+      <td>LF_Task() 中添加 IsBusy/Run 调用 + include</td>
+    </tr>
+    <tr>
+      <td><code class="mono" style="color:var(--muted);">arm.c</code></td>
+      <td style="color:var(--muted);">🔒 不动</td>
+      <td>0</td>
+      <td>零修改 — 所有参数/逻辑通过复制+调用方式复用</td>
+    </tr>
+    <tr>
+      <td><code class="mono" style="color:var(--muted);">kfs.c</code></td>
+      <td style="color:var(--muted);">🔒 不动</td>
+      <td>0</td>
+      <td>只读取全局变量 kfs_arm_1/2/3 和调用 kfs_mode GPIO逻辑</td>
+    </tr>
+    <tr>
+      <td><code class="mono" style="color:var(--muted);">motor_control.c</code></td>
+      <td style="color:var(--muted);">🔒 不动</td>
+      <td>0</td>
+      <td>直接调用 in_place() / in_place_1()</td>
+    </tr>
+    <tr>
+      <td><code class="mono" style="color:var(--muted);">dm_motor.c / common.c / pid.c</code></td>
+      <td style="color:var(--muted);">🔒 不动</td>
+      <td>0</td>
+      <td>直接调用 set_mit_data / clampf / ABS / VAL_LIMIT</td>
+    </tr>
+  </table>
+
+  <div style="margin-top:14px; padding:12px 16px; background:rgba(74,222,128,0.05); border-radius:8px; border-left:3px solid var(--green);">
+    <b>✅ 兼容性保证:</b>
+    所有电机操作均通过 <code>obj->set_mit_data()</code> 方法指针或 <code>DMset_mit_data()</code> 直接函数，
+    与 arm.c 使用完全相同的 CAN 协议栈。所有运动控制均使用 <code>in_place()</code> / <code>in_place_1()</code>，
+    与 arm mode 3 使用完全相同的到位算法。重力补偿通过 <code>Torque_Comp_global()</code>，与 arm mode 0/3/5/6 一致。
+  </div>
+</div>
+
+<p style="text-align:center;color:var(--muted);margin:36px 0 16px;padding:16px;border-top:1px solid var(--border);">
+  RC26_H7_R1 取KFS全流程自动化方案 v3 &nbsp;|&nbsp; 2026-07-02 &nbsp;|&nbsp;
+  设计原则: <b>arm.c 零修改，最大化复用已有函数</b>
+</p>
+
+</div>
+</body>
+</html>
