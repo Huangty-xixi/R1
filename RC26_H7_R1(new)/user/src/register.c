@@ -75,7 +75,7 @@ void Kfs_Init(void)
 	
   	kfs_arm_1.set_mit_data(&kfs_arm_1,0.f,0.f,0.f,0.f,0.f);
   	kfs_arm_2.set_mit_data(&kfs_arm_2,0.f,0.f,0.f,0.f,0.f);		
-	  kfs_arm_3.set_mit_data(&kfs_arm_3,0.f,0.f,0.f,0.f,0.f);
+	kfs_arm_3.set_mit_data(&kfs_arm_3,0.f,0.f,0.f,0.f,0.f);
   	kfs_catch.set_mit_data(&kfs_catch,0.f,0.f,0.f,0.f,0.f);	
 
 }
@@ -95,6 +95,9 @@ void Lift_Init(void)
     
     R2_lift_motor_left.send_cmd(&R2_lift_motor_left,Motor_Enable);
     R2_lift_motor_right.send_cmd(&R2_lift_motor_right,Motor_Enable);
+    
+    R2_lift_motor_left.send_cmd(&R2_lift_motor_left,Motor_Save_Zero_Position);
+    R2_lift_motor_right.send_cmd(&R2_lift_motor_right,Motor_Save_Zero_Position);
 	
     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,0.f,0.f,0.f,0.f,0.f);
     R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0.f,0.f,0.f,0.f,0.f);

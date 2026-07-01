@@ -112,7 +112,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
      else
         {
 //          //模式0参数最低kfs抓取（已调）            
-          if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0)  //
+          if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0 && RCctrl.channel==0)  //
           {
               arm.mode=0;
               arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.6);
@@ -218,7 +218,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
               arm_3->set_mit_data(arm_3,-25*(-arm_2->position-arm_1->position+0.43+a_weapon+0.2*PI),0.0f,3.0f,1.5f,Torque.Torque_3);
          }
          //模式4参数回收武器（已调）
-         else if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.takePos ==1)  //
+         else if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.takePos ==1&& RCctrl.channel==0)  //
          {
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
               arm_1->set_mit_data(arm_1,0.4f,0.0f,30.0f,3.0f,-0.35*Torque.Torque_1);
@@ -259,7 +259,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
 
 		    //模式7参数放KFS（已调）
          else if(RCctrl.chassis == 1 && RCctrl.zone == 2 && RCctrl.bottomPos ==0)   //
-          {
+          {                                     
               arm.mode=7;
               arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.75);
               arm.h=0.55;

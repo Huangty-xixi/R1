@@ -2,7 +2,8 @@
 
 
 uint8_t auto_flag =0;
-
+int32_t arm_s_start_time = 0;
+uint8_t arm_s_running = 0;
 
 void auto_mission()  //一区对接自动流程
 {
@@ -115,33 +116,33 @@ void auto_mission()  //一区对接自动流程
        }
 
  }
-// else if(auto_flag==5)//已经收杆
-// {
-//      //2325夹紧固定
-//	  if(weapon_collect_motor.position >= -11.0f && weapon_collect_motor.position <= -2.0f)
-//	 {
-//	  hold_weapon[0] = 0.0f;
-//		hold_weapon[1] = 0.8f;
-//		hold_weapon[2] = 0.0f;
-//		hold_weapon[3] = 0.3f;
-//		hold_weapon[4] = 0.0f;
-//   }
-//	 if(weapon_collect_motor.position > -2.0f)
-//	 {
-//	  hold_weapon[0] = 0.0f;
-//		hold_weapon[1] = 0.0f;
-//		hold_weapon[2] = 0.0f;
-//		hold_weapon[3] = 0.0f;
-//		hold_weapon[4] = 0.9f;
-//	 }
-//		weapon_collect_motor.set_mit_data(&weapon_collect_motor,hold_weapon[0],hold_weapon[1],hold_weapon[2],hold_weapon[3],hold_weapon[4]);
-//     
+ else if(auto_flag==5)//已经收杆
+ {
+      //2325夹紧固定
+	  if(weapon_collect_motor.position >= -11.0f && weapon_collect_motor.position <= -2.0f)
+	 {
+	  hold_weapon[0] = 0.0f;
+		hold_weapon[1] = 0.8f;
+		hold_weapon[2] = 0.0f;
+		hold_weapon[3] = 0.3f;
+		hold_weapon[4] = 0.0f;
+   }
+	 if(weapon_collect_motor.position > -2.0f)
+	 {
+	  hold_weapon[0] = 0.0f;
+		hold_weapon[1] = 0.0f;
+		hold_weapon[2] = 0.0f;
+		hold_weapon[3] = 0.0f;
+		hold_weapon[4] = 0.9f;
+	 }
+		weapon_collect_motor.set_mit_data(&weapon_collect_motor,hold_weapon[0],hold_weapon[1],hold_weapon[2],hold_weapon[3],hold_weapon[4]);
+     
 //     if(weapon_collect_motor.position > -2.0f)
 //     {
 //        auto_flag=6; 
 //     }
 
-// }
+ }
 // if(auto_flag==6) //2325已夹紧固定
 // {
 //     //松机械臂夹爪
@@ -225,6 +226,21 @@ void auto_mission()  //一区对接自动流程
 }
 //第一步，左移一个车身位，避开R2.第二步，根据需要取走的R1KFS选定梅林角落，左或右。第三步，横移到KFS前
 
+//void kfs_auto()
+//{
+//     if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0)  //
+//      {
+//              arm.mode=0;
+//              arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.6);
+//              arm.h=0.23;
+//              angles=Arm_Inverse_Solution(&arm);             
+//              Torque=Torque_Comp_global(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
+//                           
+//              kfs_arm_1.set_mit_data(&kfs_arm_1,angles.theta_1+0.43f,0.0f,70.0f,5.0f,-0.25*Torque.Torque_1);
+//              kfs_arm_2.set_mit_data(&kfs_arm_2,-angles.theta_2,0.0f,50.0f,4.5f,-0.6*Torque.Torque_2);
+//              kfs_arm_3.set_mit_data(&kfs_arm_3,25*(PI/2.0f+kfs_arm_1.position-0.43+kfs_arm_2.position-PI*0.08f),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+//      }
+//}
 
 float mid_x = 0.0f;  //mid360数据
 float mid_y = 0.0f;
