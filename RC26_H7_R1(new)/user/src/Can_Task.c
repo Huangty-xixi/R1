@@ -172,49 +172,50 @@ void HF_Task()          //高频率任务，200hz
 
 		Arm_task(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
   }
+  auto_flag=0;
 }
   if(RCctrl.channel == 1) //自动模式
  {
-//	 if()
-//   {
-//	   auto_mission();
-//	 }
+	 if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.takePos ==0)
+   {
+	   auto_mission();
+   }
 //   else if()
 //   {
 //	   auto_second_inplace();
 //	 }   //自动模式代码调用
 	 
 	 //临时旧遥控运行红外
-	  if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==0)
+	  if(RCctrl.area == 2 && RCctrl.cmd ==0)
     {
 		  RCctrl.th_rec = 1;
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==1)
+		if(RCctrl.area == 2 && RCctrl.cmd ==1)
     {
 		  RCctrl.th_rec = 2;
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==2)
+		if(RCctrl.area == 2 && RCctrl.cmd ==2)
     {
 		  RCctrl.th_rec = 3;
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==3)
+		if(RCctrl.area == 2 && RCctrl.cmd ==3)
     {
 		  RCctrl.th_rec = 5;
         
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==4)
+		if(RCctrl.area == 2 && RCctrl.cmd ==4)
     {
 		  RCctrl.th_rec = 4;
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 2 && RCctrl.cmd ==6)
+		if(RCctrl.area == 2 && RCctrl.cmd ==5)
     {
 		  RCctrl.th_put = true;
 		}
-		if(RCctrl.channel == 1 && RCctrl.area == 0 && RCctrl.cmd ==1)
+		if(RCctrl.area == 0 && RCctrl.cmd ==1)
     {
 		  RCctrl.fir_rec = true;
 	  }
-
+    Arm_task(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
  }
 }
 }
@@ -404,7 +405,7 @@ void Sent_Task(void const * argument)
 	}
 }
 
- if(RCctrl.th_rec !=0)  //三区指令收到
+ if(RCctrl.th_rec !=0||RCctrl.modi_x!=0)  //三区指令收到
 {
   th_5mode();
 	

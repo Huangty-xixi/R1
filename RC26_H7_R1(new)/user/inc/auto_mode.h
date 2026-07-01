@@ -11,6 +11,7 @@
 #include "arm.h"
 #include "policy.h"
 
+extern uint8_t auto_flag;
 
 extern float mid_x;  //mid360Êý¾Ý
 extern float mid_y;

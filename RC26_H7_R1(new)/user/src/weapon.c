@@ -17,7 +17,7 @@ Weapon_Module Weapon;
 float weapon_joint_motor_pid_param[PID_PARAMETER_NUM] = {2.5f,0.03f,0.2f,1,200.0f,10000.0f}; 
 
 float weapon_joint_input=0;
-float h_compensation = 0.0f;
+float h_compensation = 1.5f;
 
 void weapon_mode()
 {

@@ -95,7 +95,7 @@ void th_order()      //三区放KFS数组赋值
     four_sent[0] = 0x55;
 	four_sent[1] = 0x01;
 	four_sent[2] = 0x54;
-	four_sent[3] = 0xAA;
+	four_sent[3] = 0xAB;
 }
 
 void th_5mode()      //三区1~5指令集，数组赋值

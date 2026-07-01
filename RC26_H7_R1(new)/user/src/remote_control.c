@@ -86,7 +86,7 @@ Remote_Info_Typedef_New RCctrl={
 void REMOTE_ParseData(volatile const uint8_t *remote_buf, Remote_Info_Typedef_New  *rc)
 {
     // ֡ͷ֡βУ��
-  if (remote_buf[0] == 0x00 || remote_buf[1] == 0x00 || remote_buf[8] == 0x00)
+  if (remote_buf[0] == NULL || remote_buf[1] == NULL || remote_buf[8] == NULL)
   {
 	    RCctrl.rc_lost = true;
         return;

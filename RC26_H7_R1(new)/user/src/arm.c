@@ -98,18 +98,31 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
             float kfs_2[5]={0,0,0,0,0};
             float kfs_3[5]={0,0,0,0,0};
 
-//          //模式0参数最低kfs抓取（已调）
+                    //模式12参数 给R2让位
+      if(RCctrl.area == 2 && RCctrl.cmd ==3)
+        {
+             arm.mode=12;
+             Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
+            
+             arm_1->set_mit_data(arm_1,0.722f,0.0f,30.0f,3.0f,-0.5f*Torque.Torque_1);
+             arm_2->set_mit_data(arm_2,-0.335f,0.0f,30.0f,3.0f,-0.5f*Torque.Torque_2);
+             arm_3->set_mit_data(arm_3,27.956f,0.0f,0.3f,0.5f,0.5f*Torque.Torque_3);
+		}
+
+     else
+        {
+//          //模式0参数最低kfs抓取（已调）            
           if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0)  //
           {
               arm.mode=0;
               arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.6);
-              arm.h=0.20;
+              arm.h=0.23;
               angles=Arm_Inverse_Solution(&arm);             
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
                            
               arm_1->set_mit_data(arm_1,angles.theta_1+0.43f,0.0f,70.0f,5.0f,-0.25*Torque.Torque_1);
               arm_2->set_mit_data(arm_2,-angles.theta_2,0.0f,50.0f,4.5f,-0.6*Torque.Torque_2);
-              arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-PI*0.12f),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+              arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-PI*0.08f),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
           }
          //模式1参数 捡kfs（已调）
           else if(RCctrl.chassis == 1 && RCctrl.zone == 2 && RCctrl.bottomPos ==1)   //
@@ -192,11 +205,11 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
 					 
 
          //模式2参数夹取武器（已调）
-         else if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.takePos ==0)  //
+         else if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.takePos ==0 && RCctrl.channel==0)  //
          {
               arm.mode=2;
               arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.39,0.65);
-              arm.h=0.11f; 
+              arm.h=0.14f; 
               angles=Arm_Inverse_Solution(&arm);             
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
              
@@ -209,9 +222,9 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
          {
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
               arm_1->set_mit_data(arm_1,0.4f,0.0f,30.0f,3.0f,-0.35*Torque.Torque_1);
-              arm_2->set_mit_data(arm_2,-0.42f,0.0f,40.0f,4.0f,-0.3f*Torque.Torque_2);
+              arm_2->set_mit_data(arm_2,-0.55f,0.0f,40.0f,4.0f,-0.3f*Torque.Torque_2);
               //arm_3->set_mit_data(arm_3,20.8f,0.0f,1.0f,1.5f,0.0f*Torque.Torque_3); 
-					    in_place(20.8,&kfs_3[0],arm_3->position,&kfs_3[1],0.1f,&kfs_3[2],1.0f,&kfs_3[3],0.8f,0.4,&kfs_3[4],0.0f,0.0f,0.30f*PI);
+					    in_place(23.8,&kfs_3[0],arm_3->position,&kfs_3[1],0.1f,&kfs_3[2],1.0f,&kfs_3[3],0.8f,0.4,&kfs_3[4],0.0f,0.0f,0.30f*PI);
 					    arm_3->set_mit_data(arm_3,kfs_3[0],kfs_3[1],kfs_3[2],kfs_3[3],kfs_3[4]);
 					 
          }
@@ -227,7 +240,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
               
               arm_1->set_mit_data(arm_1,angles.theta_1+0.45f,0.0f,25.0f,2.0f,-0.25*Torque.Torque_1);
               arm_2->set_mit_data(arm_2,-angles.theta_2,0.0f,40.0f,4.0f,-0.5*Torque.Torque_2);
-              arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.1*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+              arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.08*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
           }
           
           //模式6参数高梅林kfs抓取(已调）
@@ -240,7 +253,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
               
               arm_1->set_mit_data(arm_1,angles.theta_1+0.45f,0.0f,25.0f,2.0f,-0.25*Torque.Torque_1);
-              arm_2->set_mit_data(arm_2,-angles.theta_2,0.0f,40.0f,4.0f,-0.5*Torque.Torque_2);
+              arm_2->set_mit_data(arm_2,-angles.theta_2,0.0f,50.0f,4.0f,-0.5*Torque.Torque_2);
               arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.09*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
           }
 
@@ -249,7 +262,7 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
           {
               arm.mode=7;
               arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.75);
-              arm.h=0.51;
+              arm.h=0.55;
               angles=Arm_Inverse_Solution(&arm);             
               Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
               
@@ -352,16 +365,8 @@ HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorM
                 arm_1->set_mit_data(arm_1,0.3f,0.0f,55.0f,5.0f,-1.2f*Torque.Torque_1); 
              } 
           }
-        //模式12参数 给R2让位
-          else if(RCctrl.chassis == 1 && RCctrl.area == 2 && RCctrl.cmd ==3)
-        {
-             arm.mode=12;
-             Torque=Torque_Comp_global(arm_1,arm_2,arm_3);
-            
-             arm_1->set_mit_data(arm_1,0.0f,0.0f,0.0f,0.0f,0.0f);
-             arm_2->set_mit_data(arm_2,0.0f,0.0f,0.0f,0.0f,0.0f);
-             arm_3->set_mit_data(arm_3,0.0f,0.0f,0.0f,0.0f,0.0f);
-		}
+      }
+
          //纯力矩补偿
 //		 else
 //		  {
