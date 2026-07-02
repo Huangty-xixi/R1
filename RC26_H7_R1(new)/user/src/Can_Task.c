@@ -113,6 +113,8 @@
 
 void HF_Task()          //高频率任务，200hz
 {
+    Auto_Init();
+    
   if(RCctrl.rc_lost)
 {
 	
@@ -149,7 +151,7 @@ void HF_Task()          //高频率任务，200hz
 	  
 		weapon_joint_motor.PID_Calculate(&weapon_joint_motor,weapon_joint_input);
 		if(ABS(weapon_joint_input) <=10){weapon_joint_motor.pid_spd.Output = 0.0f;}
-	  DJIset_motor_data(&hfdcan2, 0X1FF,0 ,weapon_joint_motor.pid_spd.Output,0,0);
+	    DJIset_motor_data(&hfdcan2, 0X1FF,0 ,weapon_joint_motor.pid_spd.Output,0,0);
 
 		Arm_task(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
 	}
@@ -264,6 +266,13 @@ if(RCctrl.rc_lost)
 		weapon_collect_motor.set_mit_data(&weapon_collect_motor,hold_weapon[0],hold_weapon[1],hold_weapon[2],hold_weapon[3],hold_weapon[4]);
 		kfs_mode();
 	}
+  	else if(RCctrl.chassis == 0)//底盘模式，防掉高
+  {
+	    lift_mode();
+		
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
+  }
   	sense();
 }
 }

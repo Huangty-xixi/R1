@@ -66,22 +66,22 @@ void weapon_hold()
 	}
 	else if(RCctrl.hold ==1)  //按钮开
   {
-		if(weapon_collect_motor.position >= -2.0f && weapon_collect_motor.position <= -0.4f)
+     if(weapon_collect_motor.position >= -2.0f && weapon_collect_motor.position <= -0.4f)
 	 {
-	  hold_weapon[0] = 0.0f;
+	    hold_weapon[0] = 0.0f;
 		hold_weapon[1] = 0.8f;
 		hold_weapon[2] = 0.0f;
 		hold_weapon[3] = 0.3f;
 		hold_weapon[4] = 0.0f;
-   }
+     }
 	 if(weapon_collect_motor.position > -0.36f)
 	 {
-	  hold_weapon[0] = 0.0f;
+	    hold_weapon[0] = 0.0f;
 		hold_weapon[1] = 0.0f;
 		hold_weapon[2] = 0.0f;
 		hold_weapon[3] = 0.0f;
 		hold_weapon[4] = 0.9f;//参数待调！
-   }
+      }
 	}
  }
 }

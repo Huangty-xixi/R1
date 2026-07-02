@@ -1,24 +1,14 @@
 #include "register.h"
 
-#include "global.h"
-#include "motor.h"
-#include "dji_motor.h"
-#include "dm_motor.h"
-#include "chassis.h"
-#include "kfs.h"
-#include "lift.h"
-#include "weapon.h"
-#include "motor_control.h"
-
 void Chassis_Init(void) 
 {
     StructureModule_Create(&Chassis.super_struct, chassis);
     Chassis.super_struct.base.Init(&Chassis.super_struct.base);
 	
-	  DMmotor_Create (&chassis_angle1, CHASSIS_ANGLE1_CMD_ID, CHASSIS_ANGLE1_MASTER_ID,&hfdcan1, DM_6220,MIT);
+	DMmotor_Create (&chassis_angle1, CHASSIS_ANGLE1_CMD_ID, CHASSIS_ANGLE1_MASTER_ID,&hfdcan1, DM_6220,MIT);
     DMmotor_Create (&chassis_angle2, CHASSIS_ANGLE2_CMD_ID, CHASSIS_ANGLE2_MASTER_ID,&hfdcan1, DM_6220,MIT);
     DMmotor_Create (&chassis_angle3, CHASSIS_ANGLE3_CMD_ID, CHASSIS_ANGLE3_MASTER_ID,&hfdcan1, DM_6220,MIT);
-	  DMmotor_Create (&chassis_angle4, CHASSIS_ANGLE4_CMD_ID, CHASSIS_ANGLE4_MASTER_ID,&hfdcan1, DM_6220,MIT);
+    DMmotor_Create (&chassis_angle4, CHASSIS_ANGLE4_CMD_ID, CHASSIS_ANGLE4_MASTER_ID,&hfdcan1, DM_6220,MIT);
     
     DJImotor_Create(&chassis_motor1, CHASSIS_MOTOR1_CMD_ID, CHASSIS_MOTOR1_FEEDBACK_ID, &hfdcan2, DJI_3508, SPEED, PID_POSITION, chassis_motor1_pid_param);
     DJImotor_Create(&chassis_motor2, CHASSIS_MOTOR2_CMD_ID, CHASSIS_MOTOR2_FEEDBACK_ID, &hfdcan2, DJI_3508, SPEED, PID_POSITION, chassis_motor2_pid_param);
@@ -121,6 +111,7 @@ void Weapon_Init(void)
     
     weapon_collect_motor.send_cmd(&weapon_collect_motor, Motor_Enable);
 }
+
 
 void Structue_Init(void)
 {

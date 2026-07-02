@@ -4,11 +4,12 @@
 uint8_t auto_flag =0;
 int32_t arm_s_start_time = 0;
 uint8_t arm_s_running = 0;
+uint8_t auto_init_flag=0;
 
-void auto_mission()  //一区对接自动流程
+void Auto_Init(void) //车要运动到据武器架22cm的地方
 {
-  if(auto_flag == 0)//取杆指令触发，autoflag已经置0
- {
+    if(auto_init_flag==0)
+    {
         k_catch[0] = 35.0f;
 		k_catch[1] = 0.0f;
 		k_catch[2] = 1.8f;
@@ -16,23 +17,47 @@ void auto_mission()  //一区对接自动流程
 		k_catch[4] = 0.0f;
         kfs_catch.set_mit_data(&kfs_catch,k_catch[0],k_catch[1],k_catch[2],k_catch[3],k_catch[4]);
      
+     	hold_weapon[0] = -1.8f;
+		hold_weapon[1] = 0.0f;
+		hold_weapon[2] = 1.2f;
+		hold_weapon[3] = 0.2f;
+		hold_weapon[4] = 0.0f;
+     
+       weapon_collect_motor.set_mit_data(&weapon_collect_motor,hold_weapon[0],hold_weapon[1],hold_weapon[2],hold_weapon[3],hold_weapon[4]);
+     
      if(kfs_catch.position >34.0f&&kfs_catch.position <36.0f)//夹爪已张开
      {
-         auto_flag = 1;
+         auto_init_flag = 1;
      }
-//    //移动到第一定点 
-	     
-// }
-// else if()//判断里程计，到达第一定点
-// {
-//    //移动到第二定点，视目标杆位置而定
-// }
-// else if()//判断里程计，到达第二定点
-// {
-//    //机械臂弹出，写死姿态
+    }
+    if(auto_init_flag==1)
+    {
+      float kfs_3[5]={0,0,0,0,0};
+	   Torque=Torque_Comp_global(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
+       kfs_arm_1.set_mit_data(&kfs_arm_1,0.42f,0.0f,60.0f,5.0f,-0.35*Torque.Torque_1);
+       kfs_arm_2.set_mit_data(&kfs_arm_2,-0.39f,0.0f,30.0f,3.0f,-0.3f*Torque.Torque_2);
+       in_place(22.8,&kfs_3[0],kfs_arm_3.position,&kfs_3[1],0.1f,&kfs_3[2],1.0f,&kfs_3[3],0.8f,0.4,&kfs_3[4],0.0f,0.0f,0.30f*PI);
+		 kfs_arm_3.set_mit_data(&kfs_arm_3,kfs_3[0],kfs_3[1],kfs_3[2],kfs_3[3],kfs_3[4]);
+       if(kfs_arm_1.position<0.43&&kfs_arm_1.position>0.39&kfs_arm_2.position>-0.32&&kfs_arm_2.position<-0.28&&kfs_arm_3.position>22.3f&&kfs_arm_3.position<22.7f)//收杆到位
+       {
+          auto_init_flag=2; 
+       }
+    }
+   else if(auto_init_flag==2)
+    { 
+         in_place_fast(11.5+1.0f,&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,&lift_left[2],4.0f,&lift_left[3],2.0f,0.5f,&lift_left[4],1.0f,0.05f,0.30f,1.2f);
+         in_place_fast(11.5+1.0f,&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,&lift_right[2],4.0f,&lift_right[3],2.0f,0.5f,&lift_right[4],1.0f,0.05f,0.30f,1.2f);
+         hold_step(R2_lift_motor_left.speed_w,R2_lift_motor_right.speed_w,&lift_right[4]);
+         side_by_side(R2_lift_motor_left.position,R2_lift_motor_right.position,&lift_right[4]);
+         
+         R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
+         R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
+    }
+}
 
- }
- else if(auto_flag == 1)//夹爪已张开
+void auto_mission()  //一区对接自动流程
+{ 
+ if(auto_flag == 0)
  {
  	 arm.mode=2;
      arm.s=0.39;
@@ -44,13 +69,13 @@ void auto_mission()  //一区对接自动流程
      kfs_arm_2.set_mit_data(&kfs_arm_2,-angles.theta_2,0.0f,30.0f,2.0f,-Torque.Torque_2);
      kfs_arm_3.set_mit_data(&kfs_arm_3,-25*(-kfs_arm_2.position-kfs_arm_1.position+0.43+a_weapon+0.2*PI),0.0f,3.0f,1.5f,Torque.Torque_3);
      
-     if(kfs_arm_1.position<0.52&&kfs_arm_1.position>0.48&&kfs_arm_2.position>-0.33&&kfs_arm_2.position<-0.29&&kfs_arm_3.position>-23.0f&&kfs_arm_3.position<-19.0f)//机械臂三电机均到位
+     if(kfs_arm_1.position<0.52&&kfs_arm_1.position>0.46&&kfs_arm_2.position>-0.33&&kfs_arm_2.position<-0.29&&kfs_arm_3.position>-23.0f&&kfs_arm_3.position<-19.0f)//机械臂三电机均到位
      {
-         auto_flag = 2;
+         auto_flag = 1;
      }
 
  }
- else if(auto_flag==2)//机械臂已到位
+ else if(auto_flag==1)//机械臂已到位
  {
          //夹爪合上
 	  if(kfs_catch.position > 30.0f)
@@ -61,7 +86,7 @@ void auto_mission()  //一区对接自动流程
 		 k_catch[3] = 0.4f;
 		 k_catch[4] = 0.0f;
 	 }
-	 else if(kfs_catch.position < 30.0f && kfs_catch.position > 5.0f)
+	 else if(kfs_catch.position < 30.0f && kfs_catch.position >= 7.0f)
    {
 	   k_catch[0] = 0.0f;
 		 k_catch[1] = -(((float)kfs_catch.position -5.0f)/(25.0f)*4.0f + 1.0f);
@@ -69,7 +94,7 @@ void auto_mission()  //一区对接自动流程
 		 k_catch[3] = 1.0f/(-k_catch[1]);
 		 k_catch[4] = 0.0f;
 	 }
-	 else if(kfs_catch.position < 5.0f&&kfs_catch.position>0.0f)
+	 else if(kfs_catch.position < 7.0f&&kfs_catch.position>=6.0f)
    {
 	     k_catch[0] = 0.0f;
 		 k_catch[1] = 0.0f;
@@ -77,122 +102,92 @@ void auto_mission()  //一区对接自动流程
 	 	 k_catch[3] = 0.0f;
 		 k_catch[4] = -1.0f;
 	 }
-    else if(kfs_catch.position < 0.0f)//夹爪已经合上
+    else if(kfs_catch.position < 6.0f)//夹爪已经合上
     {
-         auto_flag=3;
+         auto_flag=2;
     }
     kfs_catch.set_mit_data(&kfs_catch,k_catch[0],k_catch[1],k_catch[2],k_catch[3],k_catch[4]);
 
 
  }
- else if(auto_flag==3)//夹爪已经合上
- {
-      //抬升中
-     in_place_fast(11.5f,&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,&lift_left[2],4.0f,&lift_left[3],2.0f,0.5f,&lift_left[4],1.0f,0.05f,0.28f,1.2f);
-	 in_place_fast(11.5f,&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,&lift_right[2],4.0f,&lift_right[3],2.0f,0.5f,&lift_right[4],1.0f,0.05f,0.28f,1.2f);
-	 hold_step(R2_lift_motor_left.speed_w,R2_lift_motor_right.speed_w,&lift_right[4]);
-	 side_by_side(R2_lift_motor_left.position,R2_lift_motor_right.position,&lift_right[4]);
-	 
-	 R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
-	 R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
-     
-     if(R2_lift_motor_left.position<11.6f&&R2_lift_motor_left.position>11.4f&&R2_lift_motor_right.position<11.6f&&R2_lift_motor_right.position>11.4f)//抬升到位
-     {
-         auto_flag=4;
-     }
- }
- else if(auto_flag==4)//抬升中到位
+
+ else if(auto_flag==2)
  {
       //机械臂收杆
 	   float kfs_3[5]={0,0,0,0,0};
 	   Torque=Torque_Comp_global(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
        kfs_arm_1.set_mit_data(&kfs_arm_1,0.4f,0.0f,20.0f,2.0f,-0.35*Torque.Torque_1);
        kfs_arm_2.set_mit_data(&kfs_arm_2,-0.39f,0.0f,30.0f,3.0f,-0.3f*Torque.Torque_2);
-       in_place(23.8,&kfs_3[0],kfs_arm_3.position,&kfs_3[1],0.1f,&kfs_3[2],1.0f,&kfs_3[3],0.8f,0.4,&kfs_3[4],0.0f,0.0f,0.30f*PI);
+       in_place(24.8,&kfs_3[0],kfs_arm_3.position,&kfs_3[1],0.1f,&kfs_3[2],1.0f,&kfs_3[3],0.8f,0.4,&kfs_3[4],0.0f,0.0f,0.30f*PI);
 		 kfs_arm_3.set_mit_data(&kfs_arm_3,kfs_3[0],kfs_3[1],kfs_3[2],kfs_3[3],kfs_3[4]);
-       if(kfs_arm_1.position<0.39&&kfs_arm_1.position>0.35&&kfs_arm_2.position>-0.32&&kfs_arm_2.position<-0.28&&kfs_arm_3.position>23.4f&&kfs_arm_3.position<23.6f)//收杆到位
+       if(kfs_arm_1.position<0.43&&kfs_arm_1.position>0.39&kfs_arm_2.position>-0.32&&kfs_arm_2.position<-0.28&&kfs_arm_3.position>24.3f&&kfs_arm_3.position<24.7f)//收杆到位
        {
-          auto_flag=5; 
+          osDelay(4000);
+          auto_flag=3; 
        }
 
  }
- else if(auto_flag==5)//已经收杆
+ else if(auto_flag==3)//已经收杆
  {
       //2325夹紧固定
 	  if(weapon_collect_motor.position >= -11.0f && weapon_collect_motor.position <= -2.0f)
 	 {
-	  hold_weapon[0] = 0.0f;
+	    hold_weapon[0] = 0.0f;
 		hold_weapon[1] = 0.8f;
 		hold_weapon[2] = 0.0f;
 		hold_weapon[3] = 0.3f;
 		hold_weapon[4] = 0.0f;
    }
-	 if(weapon_collect_motor.position > -2.0f)
+	 if(weapon_collect_motor.position > -2.0f&&weapon_collect_motor.position<=0.0f)
 	 {
-	  hold_weapon[0] = 0.0f;
+	    hold_weapon[0] = 0.0f;
 		hold_weapon[1] = 0.0f;
 		hold_weapon[2] = 0.0f;
 		hold_weapon[3] = 0.0f;
 		hold_weapon[4] = 0.9f;
 	 }
+     
 		weapon_collect_motor.set_mit_data(&weapon_collect_motor,hold_weapon[0],hold_weapon[1],hold_weapon[2],hold_weapon[3],hold_weapon[4]);
      
-//     if(weapon_collect_motor.position > -2.0f)
-//     {
-//        auto_flag=6; 
-//     }
+     if(weapon_collect_motor.position > 0.0f&&weapon_collect_motor.position<=0.2f)
+     {
+        auto_flag=4; 
+     }
 
  }
-// if(auto_flag==6) //2325已夹紧固定
-// {
-//     //松机械臂夹爪
-//        k_catch[0] = 35.0f;
-//		k_catch[1] = 0.0f;
-//		k_catch[2] = 1.8f;
-//		k_catch[3] = 1.0f;
-//		k_catch[4] = 0.0f;
-//        kfs_catch.set_mit_data(&kfs_catch,k_catch[0],k_catch[1],k_catch[2],k_catch[3],k_catch[4]);
-//     
-//     if(kfs_catch.position >34.0f&&kfs_catch.position <36.0f)//夹爪已张开
-//     {
-//         auto_flag = 7;
-//     }
-// }
-// 
-
-////// {
-//////    //移动到第三定点，准备对接
-////// }
-////// 
-////// if(weapon_collect_motor.position < -2.0f)//如果还未固定
-////// {
-//////    //抬升中
-//////   in_place_fast(11.5f,&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,&lift_left[2],4.0f,&lift_left[3],2.0f,0.5f,&lift_left[4],1.0f,0.05f,0.28f,1.2f);
-//////	 in_place_fast(11.5f,&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,&lift_right[2],4.0f,&lift_right[3],2.0f,0.5f,&lift_right[4],1.0f,0.05f,0.28f,1.2f);
-//////	 hold_step(R2_lift_motor_left.speed_w,R2_lift_motor_right.speed_w,&lift_right[4]);
-//////	 side_by_side(R2_lift_motor_left.position,R2_lift_motor_right.position,&lift_right[4]);
-//////	 
-//////	 R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
-//////	 R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
-////// }
-// else if(auto_flag==7)//机械臂已经松爪
-// {
-//// if(weapon_collect_motor.position > -2.0f)//已经固定
-//// {
-//    //抬升高
-//    in_place_fast((19.6f),&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,
-//	                             &lift_left[2],8.0f,&lift_left[3],2.0f,1.8f,&lift_left[4],1.0f,0.02f,0.35f,1.2f);
-//	  in_place_fast((19.6f),&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,
-//	                             &lift_right[2],8.0f,&lift_right[3],2.0f,1.8f,&lift_right[4],1.0f,0.02f,0.35f,1.2f);
-//	  hold_step(R2_lift_motor_left.speed_w,R2_lift_motor_right.speed_w,&lift_right[4]);
-//	  side_by_side(R2_lift_motor_left.position,R2_lift_motor_right.position,&lift_right[4]);
-//          
-//	 R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
-//	 R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
-//     
-// }
-// 
-//}
+ else if(auto_flag==4) //2325已夹紧固定
+ {
+     //松机械臂夹爪
+        k_catch[0] = 35.0f;
+		k_catch[1] = 0.0f;
+		k_catch[2] = 1.8f;
+		k_catch[3] = 1.0f;
+		k_catch[4] = 0.0f;
+        kfs_catch.set_mit_data(&kfs_catch,k_catch[0],k_catch[1],k_catch[2],k_catch[3],k_catch[4]);
+     
+     if(kfs_catch.position >34.0f&&kfs_catch.position <36.0f)//夹爪已张开
+     {
+         osDelay(5000);
+         auto_flag = 5;
+     }
+ }
+ 
+ else if(auto_flag==5)//机械臂已经松爪
+ {
+    //抬升高
+    in_place_fast((19.6f),&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,
+	                             &lift_left[2],8.0f,&lift_left[3],2.0f,1.8f,&lift_left[4],1.0f,0.02f,0.35f,1.2f);
+	  in_place_fast((19.6f),&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,
+	                             &lift_right[2],8.0f,&lift_right[3],2.0f,1.8f,&lift_right[4],1.0f,0.02f,0.35f,1.2f);
+	  hold_step(R2_lift_motor_left.speed_w,R2_lift_motor_right.speed_w,&lift_right[4]);
+	  side_by_side(R2_lift_motor_left.position,R2_lift_motor_right.position,&lift_right[4]);
+          
+	 R2_lift_motor_left.set_mit_data(&R2_lift_motor_left,lift_left[0],lift_left[1],lift_left[2],lift_left[3],lift_left[4]);
+	 R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,lift_right[0],lift_right[1],lift_right[2],lift_right[3],lift_right[4]);
+     
+ }
+ 
+}
 
 //uint8_t distance_count = 0;
 //float ml_dis = 1.2f;   //视情况更改，梅林边长宽度
@@ -223,24 +218,24 @@ void auto_mission()  //一区对接自动流程
 ////	 //横移到位
 //// }
 	
-}
 //第一步，左移一个车身位，避开R2.第二步，根据需要取走的R1KFS选定梅林角落，左或右。第三步，横移到KFS前
 
-//void kfs_auto()
-//{
-//     if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0)  //
-//      {
-//              arm.mode=0;
-//              arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.6);
-//              arm.h=0.23;
-//              angles=Arm_Inverse_Solution(&arm);             
-//              Torque=Torque_Comp_global(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
-//                           
-//              kfs_arm_1.set_mit_data(&kfs_arm_1,angles.theta_1+0.43f,0.0f,70.0f,5.0f,-0.25*Torque.Torque_1);
-//              kfs_arm_2.set_mit_data(&kfs_arm_2,-angles.theta_2,0.0f,50.0f,4.5f,-0.6*Torque.Torque_2);
-//              kfs_arm_3.set_mit_data(&kfs_arm_3,25*(PI/2.0f+kfs_arm_1.position-0.43+kfs_arm_2.position-PI*0.08f),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
-//      }
-//}
+void kfs_auto()
+{
+    
+     if(RCctrl.chassis == 1 && RCctrl.zone == 1 && RCctrl.key ==0)  //
+      {
+              arm.mode=0;
+              arm.s=data_convert(RCctrl.accel, ACCEL_LOW, ACCEL_HIGH, 0.32,0.6);
+              arm.h=0.23;
+              angles=Arm_Inverse_Solution(&arm);             
+              Torque=Torque_Comp_global(&kfs_arm_1,&kfs_arm_2,&kfs_arm_3);
+                           
+              kfs_arm_1.set_mit_data(&kfs_arm_1,angles.theta_1+0.43f,0.0f,70.0f,5.0f,-0.25*Torque.Torque_1);
+              kfs_arm_2.set_mit_data(&kfs_arm_2,-angles.theta_2,0.0f,50.0f,4.5f,-0.6*Torque.Torque_2);
+              kfs_arm_3.set_mit_data(&kfs_arm_3,25*(PI/2.0f+kfs_arm_1.position-0.43+kfs_arm_2.position-PI*0.08f),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+      }
+}
 
 float mid_x = 0.0f;  //mid360数据
 float mid_y = 0.0f;

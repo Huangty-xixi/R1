@@ -12,6 +12,7 @@
 #include "policy.h"
 
 extern uint8_t auto_flag;
+extern uint8_t auto_init_flag;
 
 extern float mid_x;  //mid360Êý¾Ý
 extern float mid_y;
@@ -22,6 +23,7 @@ extern float diff_y;
 extern float diff_w;
 
 extern void auto_mission();
+extern void Auto_Init();
 extern void auto_second_inplace();
 extern void auto_inplace(float target_x,float target_y,float target_w);
 extern float auto_pid(float diff);

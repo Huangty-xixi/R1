@@ -111,7 +111,7 @@ void th_5mode()      //三区1~5指令集，数组赋值
   {
 	  th_sent[2] = 0x02;//让R2朝车头右侧走
   }
-	th_sent[3] = 0xEE ^ th_sent[1];
+	th_sent[3] = 0xEE ^ th_sent[1]^ th_sent[2];
 	th_sent[4] = 0xFF;
 }
 
