@@ -121,7 +121,11 @@ void DMget_motor_measure(DM_MotorModule *obj, uint8_t rx_data[8])
         obj->last_position = obj->position;
 		obj->position = uint_to_float(P_int,-P_MAX,P_MAX,16);
 		obj->speed_w = uint_to_float(V_int,-V_MAX,V_MAX,12);
-		obj->torque =  uint_to_float(T_int,-T_MAX,T_MAX,12);			
+		if (fabsf(obj->speed_w) >= (V_MAX * 0.983f))
+		{
+			obj->speed_w = 0.0f;
+		}
+		obj->torque =  uint_to_float(T_int,-T_MAX,T_MAX,12);
 		obj->temp_mos  = (float)(rx_data[6]);
 		obj->temp_rotor  =(float)(rx_data[7]);
 			

@@ -106,7 +106,11 @@ void BSP_CAN_Init(void)
   {
     Error_Handler();
   }
- 
+  if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_WARNING | FDCAN_IT_ARB_PROTOCOL_ERROR, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
   {
     Error_Handler();
@@ -137,7 +141,11 @@ void BSP_CAN_Init(void)
   {
     Error_Handler();
   }
- 
+  if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_WARNING | FDCAN_IT_ARB_PROTOCOL_ERROR, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (HAL_FDCAN_Start(&hfdcan2) != HAL_OK)
   {
     Error_Handler();
@@ -167,7 +175,11 @@ FDCAN_FilterTypeDef FDCAN3_FilterConfig;//FDCAN3预配置，可行性待议————
   {
     Error_Handler();
   }
- 
+  if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_WARNING | FDCAN_IT_ARB_PROTOCOL_ERROR, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   if (HAL_FDCAN_Start(&hfdcan3) != HAL_OK)
   {
     Error_Handler();
@@ -265,7 +277,28 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 }
 	//FDCAN3未加，可视需求
 
-	
+/* CAN 错误状态跟踪 */
+volatile uint32_t g_can1_err_flags = 0U;
+volatile uint32_t g_can2_err_flags = 0U;
+volatile uint32_t g_can3_err_flags = 0U;
+
+void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorStatusITs)
+{
+    if (hfdcan->Instance == FDCAN1)
+    {
+        g_can1_err_flags |= ErrorStatusITs;
+    }
+    else if (hfdcan->Instance == FDCAN2)
+    {
+        g_can2_err_flags |= ErrorStatusITs;
+    }
+    else if (hfdcan->Instance == FDCAN3)
+    {
+        g_can3_err_flags |= ErrorStatusITs;
+    }
+}
+
+
 
 	
 	

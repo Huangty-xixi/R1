@@ -282,6 +282,62 @@ void Free_Task(void const * argument)
 {
   for(;;)
  {
+    /* CAN TX FIFO 监控 + 卡死自动重启 */
+    {
+        static uint32_t s_can1_stuck_cnt = 0;
+        static uint32_t s_can2_stuck_cnt = 0;
+        static uint32_t s_can3_stuck_cnt = 0;
+
+        uint32_t can1_free = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
+        uint32_t can2_free = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
+        uint32_t can3_free = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
+
+        if (can1_free == 0) {
+            if (++s_can1_stuck_cnt > 100) {
+                HAL_FDCAN_Stop(&hfdcan1);
+                HAL_FDCAN_Start(&hfdcan1);
+                s_can1_stuck_cnt = 0;
+            }
+        } else s_can1_stuck_cnt = 0;
+
+        if (can2_free == 0) {
+            if (++s_can2_stuck_cnt > 100) {
+                HAL_FDCAN_Stop(&hfdcan2);
+                HAL_FDCAN_Start(&hfdcan2);
+                s_can2_stuck_cnt = 0;
+            }
+        } else s_can2_stuck_cnt = 0;
+
+        if (can3_free == 0) {
+            if (++s_can3_stuck_cnt > 100) {
+                HAL_FDCAN_Stop(&hfdcan3);
+                HAL_FDCAN_Start(&hfdcan3);
+                s_can3_stuck_cnt = 0;
+            }
+        } else s_can3_stuck_cnt = 0;
+    }
+
+    /* DM 电机掉线自动重使能（每 ~100ms 检查） */
+    {
+        static uint32_t s_dm_check_tick = 0;
+        if (++s_dm_check_tick >= 20)
+        {
+            s_dm_check_tick = 0;
+            if (chassis_angle1.state == OFF)
+                chassis_angle1.send_cmd(&chassis_angle1, Motor_Enable);
+            if (chassis_angle2.state == OFF)
+                chassis_angle2.send_cmd(&chassis_angle2, Motor_Enable);
+            if (chassis_angle3.state == OFF)
+                chassis_angle3.send_cmd(&chassis_angle3, Motor_Enable);
+            if (chassis_angle4.state == OFF)
+                chassis_angle4.send_cmd(&chassis_angle4, Motor_Enable);
+            if (R2_lift_motor_left.state == OFF)
+                R2_lift_motor_left.send_cmd(&R2_lift_motor_left, Motor_Enable);
+            if (R2_lift_motor_right.state == OFF)
+                R2_lift_motor_right.send_cmd(&R2_lift_motor_right, Motor_Enable);
+        }
+    }
+
     if(RCctrl.chassis == 1 && RCctrl.zone == 0 && RCctrl.rodPos == 0)  //双换杆按钮静默
     {
 //		  hold_weapon[0] = 0.0f;
