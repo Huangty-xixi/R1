@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KFS 自动取放 — 系统设计</title>
+<style>
+:root {
+  --bg: #090d14; --panel: #0f1624; --border: #1a2540;
+  --text: #d4dbe8; --dim: #5c6e8a; --muted: #3a4a62;
+  --pump:   #f08c00; --pump-bg: #1a1008;
+  --pose:   #10b981; --pose-bg: #081a12;
+  --push:   #06b6d4; --push-bg: #08141a;
+  --retract:#a855f7; --retract-bg: #10081a;
+  --done:   #22c55e; --done-bg: #081a10;
+  --idle:   #3a4a62; --idle-bg: #0d1118;
+  --kpi-blue: #3b82f6; --kpi-cyan: #06b6d4; --kpi-green: #22c55e;
+  --radius: 10px; --radius-sm: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 15% 5%, rgba(16,185,129,0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 95%, rgba(168,85,247,0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.03) 0%, transparent 65%);
+  color: var(--text); padding: 24px 20px 40px; line-height: 1.65; min-height: 100vh;
+}
+header { text-align:center; margin-bottom:32px; }
+h1 {
+  font-size:2.2em; font-weight:900; letter-spacing:-0.02em;
+  background: linear-gradient(135deg, var(--pump) 0%, var(--pose) 30%, var(--push) 60%, var(--retract) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:6px;
+}
+.subtitle { color:var(--dim); font-size:0.9em; margin-bottom:24px; }
+
+.kpi-row { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:6px; }
+.kpi {
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:10px 18px; text-align:center; min-width:80px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.kpi:hover { transform:translateY(-2px); }
+.kpi .val { font-size:1.5em; font-weight:800; line-height:1.1; }
+.kpi .lbl { font-size:0.7em; color:var(--dim); margin-top:2px; text-transform:uppercase; letter-spacing:0.05em; }
+.kpi-pump .val { color:var(--pump); }
+.kpi-pose .val { color:var(--pose); }
+.kpi-push .val { color:var(--push); }
+.kpi-retract .val { color:var(--retract); }
+.kpi-done .val { color:var(--done); }
+.kpi-blue .val { color:var(--kpi-blue); }
+.kpi-green .val { color:var(--kpi-green); }
+
+.field-section {
+  max-width:1100px; margin:0 auto 24px;
+  background:var(--panel); border:1px solid var(--border); border-radius:14px; overflow:hidden;
+}
+.field-header {
+  padding:10px 18px; font-weight:700; font-size:0.92em;
+  background:linear-gradient(135deg, #08141a, #05101a);
+  border-bottom:2px solid var(--push); display:flex; align-items:center; gap:8px;
+}
+.field-body { padding:16px; }
+.field-svg { width:100%; max-height:420px; display:block; }
+
+.legend { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-top:12px; font-size:0.74em; color:var(--dim); }
+.legend span { display:flex; align-items:center; gap:5px; }
+.legend .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.legend .dash { width:16px; height:0; border-top:2px dashed; display:inline-block; }
+
+.wrap { max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+
+.card {
+  background:var(--panel); border:1px solid var(--border); border-radius:14px;
+  overflow:hidden; transition: border-color 0.3s;
+}
+.card:hover { border-color:var(--muted); }
+.card-pump   { border-left:4px solid var(--pump); }
+.card-pose   { border-left:4px solid var(--pose); }
+.card-push   { border-left:4px solid var(--push); }
+.card-retract{ border-left:4px solid var(--retract); }
+.card-done   { border-left:4px solid var(--done); }
+.card-idle   { border-left:4px solid var(--idle); }
+
+.ch {
+  padding:12px 20px; font-weight:700; font-size:0.94em;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  border-bottom:1px solid var(--border);
+}
+.cb { padding:18px 22px; }
+
+.sm-grid {
+  display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;
+  margin:8px 0; font-size:0.8em;
+}
+.sm-node {
+  background:var(--panel); border:2px solid var(--border); border-radius:12px;
+  padding:10px 14px; text-align:center; min-width:82px; font-weight:600;
+  transition: all 0.25s; position:relative;
+}
+.sm-node:hover { transform:scale(1.06); z-index:2; box-shadow:0 0 24px rgba(0,0,0,0.5); }
+.sm-node .desc { font-size:0.6em; color:var(--dim); display:block; font-weight:400; margin-top:2px; }
+.sm-idle  { border-color:var(--idle); background:var(--idle-bg); }
+.sm-pump  { border-color:var(--pump); background:var(--pump-bg); }
+.sm-pose  { border-color:var(--pose); background:var(--pose-bg); }
+.sm-push  { border-color:var(--push); background:var(--push-bg); }
+.sm-retract { border-color:var(--retract); background:var(--retract-bg); }
+.sm-done  { border-color:var(--done); background:var(--done-bg); border-width:3px; }
+.sm-start { border-color:var(--pump); background:var(--done-bg); border-width:3px; }
+.sm-edge { color:var(--muted); font-size:0.75em; padding:0 4px; white-space:nowrap; }
+.sm-edge::before { content:'→'; font-size:1.1em; margin-right:2px; }
+
+.tag {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:0.68em; font-weight:700; letter-spacing:0.03em; vertical-align:middle;
+}
+.tag-pump    { background:var(--pump-bg); color:var(--pump); }
+.tag-pose    { background:var(--pose-bg); color:var(--pose); }
+.tag-push    { background:var(--push-bg); color:var(--push); }
+.tag-retract { background:var(--retract-bg); color:var(--retract); }
+.tag-done    { background:var(--done-bg); color:var(--done); }
+.tag-s { background:#052a0a; color:var(--pose); }
+.tag-n { background:#0a1a2a; color:var(--kpi-blue); }
+.tag-l { background:#081a12; color:var(--pose); }
+.tag-m { background:#0a1622; color:var(--push); }
+.tag-h { background:#1a0a04; color:#ff5722; }
+
+.tbl { width:100%; border-collapse:collapse; margin-top:8px; font-size:0.82em; }
+.tbl td, .tbl th { padding:7px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+.tbl th { color:var(--push); font-size:0.76em; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap; }
+.tbl tr:hover { background:rgba(255,255,255,0.015); }
+
+.bbox {
+  border-radius:var(--radius); padding:12px 16px; margin:8px 0; font-size:0.82em; line-height:1.7;
+}
+.bbox-pump    { background:var(--pump-bg); border-left:3px solid var(--pump); }
+.bbox-pose    { background:var(--pose-bg); border-left:3px solid var(--pose); }
+.bbox-push    { background:var(--push-bg); border-left:3px solid var(--push); }
+.bbox-retract { background:var(--retract-bg); border-left:3px solid var(--retract); }
+.bbox-done    { background:var(--done-bg); border-left:3px solid var(--done); }
+.bbox-mode    { background:#0a1a2a; border-left:3px solid var(--kpi-blue); }
+.bbox-integrate { background:#081a12; border-left:3px solid var(--done); }
+
+code {
+  font-family:"Cascadia Code",Consolas,"Fira Code",monospace; font-size:0.85em;
+  color:var(--push); background:rgba(6,182,212,0.06);
+  padding:1px 5px; border-radius:3px;
+}
+h2 { font-size:1.05em; margin:14px 0 8px; display:flex; align-items:center; gap:8px; }
+h3 { font-size:0.92em; margin:12px 0 6px; }
+h4 { font-size:0.86em; margin:10px 0 6px; }
+
+footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76em; }
+
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+@media (max-width:768px) {
+  body { padding:12px 8px; }
+  h1 { font-size:1.5em; }
+  .kpi { min-width:60px; padding:8px 10px; }
+  .kpi .val { font-size:1.2em; }
+  .sm-node { min-width:60px; padding:6px 8px; font-size:0.7em; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 KFS 自动取放系统</h1>
+  <p class="subtitle">状态机 · 结构体封装 · 双模式 · 三高度 · s-ramp 前推 · 零侵入集成 · 2026-07-03</p>
+  <div class="kpi-row">
+    <div class="kpi kpi-blue">
+      <div class="val">5</div><div class="lbl">状态机状态</div>
+    </div>
+    <div class="kpi kpi-pump">
+      <div class="val">29</div><div class="lbl">在线可调参数</div>
+    </div>
+    <div class="kpi kpi-green">
+      <div class="val">3</div><div class="lbl">高度档位</div>
+    </div>
+    <div class="kpi kpi-push">
+      <div class="val">2</div><div class="lbl">运行模式</div>
+    </div>
+    <div class="kpi kpi-done">
+      <div class="val">1</div><div class="lbl">行集成代码</div>
+    </div>
+    <div class="kpi kpi-retract">
+      <div class="val">0</div><div class="lbl">改动已有文件</div>
+    </div>
+  </div>
+</header>
+
+<!-- ====== SVG ARM KINEMATICS DIAGRAM ====== -->
+<div class="field-section">
+  <div class="field-header">
+    <span style="font-size:1.2em">📐</span> 机械臂侧视图 — 取 KFS 三档高度 & s-ramp 前推
+    <span class="tag tag-pose">低·中·高</span>
+    <span class="tag tag-push">s:0.32→0.45</span>
+  </div>
+  <div class="field-body">
+    <svg class="field-svg" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0d1520"/><stop offset="100%" stop-color="#0a1018"/>
+        </linearGradient>
+        <linearGradient id="rampGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#06b6d4"/>
+        </linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+
+      <rect x="0" y="0" width="900" height="420" rx="8" fill="url(#bgGrad)" stroke="#1a2540" stroke-width="1"/>
+
+      <!-- Grid -->
+      <g stroke="#1a2540" stroke-width="0.5" opacity="0.4">
+        <line x1="60" y1="60" x2="60" y2="380"/>
+        <line x1="200" y1="60" x2="200" y2="380"/>
+        <line x1="340" y1="60" x2="340" y2="380"/>
+        <line x1="480" y1="60" x2="480" y2="380"/>
+        <line x1="620" y1="60" x2="620" y2="380"/>
+        <line x1="760" y1="60" x2="760" y2="380"/>
+        <line x1="60" y1="100" x2="840" y2="100"/>
+        <line x1="60" y1="180" x2="840" y2="180"/>
+        <line x1="60" y1="260" x2="840" y2="260"/>
+        <line x1="60" y1="340" x2="840" y2="340"/>
+      </g>
+
+      <!-- Height annotation lines -->
+      <!-- Low: h=0.23 -->
+      <line x1="80" y1="340" x2="280" y2="340" stroke="#10b981" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+      <text x="80" y="335" fill="#10b981" font-size="9" font-weight="600">低 h=0.23</text>
+      <!-- Mid: h=0.435 -->
+      <line x1="80" y1="230" x2="280" y2="230" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+      <text x="80" y="225" fill="#06b6d4" font-size="9" font-weight="600">中 h=0.435</text>
+      <!-- High: h=0.65 -->
+      <line x1="80" y1="130" x2="280" y2="130" stroke="#ff5722" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+      <text x="80" y="125" fill="#ff5722" font-size="9" font-weight="600">高 h=0.65</text>
+
+      <!-- Robot base / shoulder -->
+      <rect x="130" y="350" width="40" height="50" rx="4" fill="#0f1624" stroke="#3a4a62" stroke-width="2"/>
+      <text x="150" y="380" fill="#5c6e8a" font-size="9" text-anchor="middle">底盘</text>
+      <circle cx="150" cy="350" r="8" fill="#2a3a50" stroke="#3a4a62" stroke-width="2"/>
+      <text x="150" y="348" fill="#d4dbe8" font-size="8" text-anchor="middle">肩</text>
+
+      <!-- Upper arm L1=0.545 -->
+      <line x1="150" y1="350" x2="280" y2="200" stroke="#d4dbe8" stroke-width="4" stroke-linecap="round"/>
+      <text x="210" y="265" fill="#5c6e8a" font-size="8">L₁=0.545</text>
+      <!-- Elbow joint -->
+      <circle cx="280" cy="200" r="6" fill="#3a4a62" stroke="#5c6e8a" stroke-width="2"/>
+
+      <!-- Forearm L2=0.440 — three positions (low/mid/high) -->
+      <!-- Low: end at ~(360, 340) -->
+      <line x1="280" y1="200" x2="380" y2="340" stroke="#10b981" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+      <!-- Mid: end at ~(380, 230) -->
+      <line x1="280" y1="200" x2="400" y2="230" stroke="#06b6d4" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+      <!-- High: end at ~(395, 130) -->
+      <line x1="280" y1="200" x2="410" y2="130" stroke="#ff5722" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+
+      <!-- End effector (suction cup) positions -->
+      <circle cx="380" cy="340" r="7" fill="none" stroke="#10b981" stroke-width="2.5" filter="url(#glow)"/>
+      <text x="380" y="358" fill="#10b981" font-size="9" text-anchor="middle" font-weight="600">低位</text>
+      <circle cx="400" cy="230" r="7" fill="none" stroke="#06b6d4" stroke-width="2.5" filter="url(#glow)"/>
+      <text x="400" y="248" fill="#06b6d4" font-size="9" text-anchor="middle" font-weight="600">中位</text>
+      <circle cx="410" cy="130" r="7" fill="none" stroke="#ff5722" stroke-width="2.5" filter="url(#glow)"/>
+      <text x="410" y="148" fill="#ff5722" font-size="9" text-anchor="middle" font-weight="600">高位</text>
+
+      <!-- s-ramp zone: from s=0.32 to s=0.45 -->
+      <rect x="360" y="290" width="80" height="70" rx="4" fill="none" stroke="rgba(6,182,212,0.15)" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="400" y="310" fill="rgba(6,182,212,0.6)" font-size="8" text-anchor="middle">s-ramp 前推</text>
+      <!-- Ramp arrow -->
+      <path d="M 370,320 Q 390,340 410,320" fill="none" stroke="url(#rampGrad)" stroke-width="2.5" stroke-dasharray="5 3"/>
+      <text x="395" y="338" fill="#06b6d4" font-size="7" text-anchor="middle">0.32→0.45</text>
+
+      <!-- s-axis annotation -->
+      <line x1="130" y1="400" x2="440" y2="400" stroke="#3a4a62" stroke-width="1"/>
+      <polygon points="440,400 433,396 433,404" fill="#3a4a62"/>
+      <text x="440" y="400" fill="#3a4a62" font-size="8" text-anchor="end">s →</text>
+      <text x="130" y="412" fill="#3a4a62" font-size="8">s_start=0.32</text>
+      <text x="350" y="412" fill="#06b6d4" font-size="8" font-weight="600">s_target=0.45</text>
+
+      <!-- Retract direction arrow (back toward chassis) -->
+      <path d="M 350,370 Q 300,388 250,390" fill="none" stroke="#a855f7" stroke-width="3" stroke-dasharray="6 3" opacity="0.6"/>
+      <text x="290" y="405" fill="#a855f7" font-size="8" font-weight="600">⬅ retract 回收</text>
+
+      <!-- Legend -->
+      <g transform="translate(580, 100)">
+        <text x="0" y="0" fill="#d4dbe8" font-size="9" font-weight="700">图例</text>
+        <line x1="0" y1="14" x2="20" y2="14" stroke="#10b981" stroke-width="3"/><text x="26" y="18" fill="#5c6e8a" font-size="8">低位 h=0.23</text>
+        <line x1="0" y1="28" x2="20" y2="28" stroke="#06b6d4" stroke-width="3"/><text x="26" y="32" fill="#5c6e8a" font-size="8">中位 h=0.435</text>
+        <line x1="0" y1="42" x2="20" y2="42" stroke="#ff5722" stroke-width="3"/><text x="26" y="46" fill="#5c6e8a" font-size="8">高位 h=0.65</text>
+        <line x1="0" y1="56" x2="20" y2="56" stroke="#a855f7" stroke-width="2" stroke-dasharray="6 3"/><text x="26" y="60" fill="#5c6e8a" font-size="8">回收路径</text>
+        <line x1="0" y1="72" x2="20" y2="72" stroke="#06b6d4" stroke-width="2.5" stroke-dasharray="5 3"/><text x="26" y="76" fill="#5c6e8a" font-size="8">s-ramp 前推</text>
+      </g>
+
+      <!-- s-ramp mini chart (inset) -->
+      <g transform="translate(620, 200)">
+        <rect x="0" y="0" width="200" height="80" rx="4" fill="#0a1018" stroke="#1a2540" stroke-width="0.8"/>
+        <text x="100" y="13" fill="#5c6e8a" font-size="7" text-anchor="middle">s-ramp 曲线 (200Hz 每帧)</text>
+        <!-- Axes -->
+        <line x1="18" y1="18" x2="18" y2="72" stroke="#2a3a50" stroke-width="0.5"/>
+        <line x1="18" y1="72" x2="195" y2="72" stroke="#2a3a50" stroke-width="0.5"/>
+        <!-- Ramp line -->
+        <polyline points="20,70 60,55 100,40 140,25 190,16" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="20" cy="70" r="3" fill="#10b981"/><circle cx="190" cy="16" r="3" fill="#ff5722"/>
+        <text x="20" y="77" fill="#10b981" font-size="6.5" text-anchor="middle">0.32</text>
+        <text x="190" y="10" fill="#ff5722" font-size="6.5" text-anchor="middle" font-weight="600">0.45</text>
+        <text x="105" y="30" fill="#06b6d4" font-size="7" text-anchor="middle">步长 0.005 / 帧</text>
+        <text x="105" y="42" fill="#5c6e8a" font-size="7" text-anchor="middle">26 帧 @200Hz ≈ 0.13s</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--pose)"></span> 低位 0.23</span>
+      <span><span class="dot" style="background:var(--push)"></span> 中位 0.435</span>
+      <span><span class="dot" style="background:#ff5722"></span> 高位 0.65</span>
+      <span><span class="dash" style="border-color:var(--retract)"></span> 回收路径</span>
+      <span><span class="dash" style="border-color:var(--push)"></span> s-ramp 前推</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ====== STATE MACHINE ====== -->
+<div class="card card-pump">
+  <div class="ch">
+    <span style="font-size:1.2em">🔀</span> 状态机流转
+    <span class="tag tag-pose">5 个状态</span>
+    <span class="tag tag-retract">吸盘 PE14+PC12 全程保持</span>
+  </div>
+  <div class="cb">
+    <div class="sm-grid">
+      <div class="sm-node sm-start">⚪ 0 IDLE<span class="desc">等待触发</span></div>
+      <div class="sm-edge">debug_step / auto_run</div>
+      <div class="sm-node sm-pump">💨 1 PUMP_ON<span class="desc">GPIO SET<br>pump_tick 计时</span></div>
+      <div class="sm-edge">延时 300ms</div>
+      <div class="sm-node sm-pose">🎯 2 POSE<span class="desc">逆解算<br>arm.mode=高度</span></div>
+      <div class="sm-edge">到位 tole</div>
+      <div class="sm-node sm-push">➡ 3 PUSH<span class="desc">s-ramp<br>0.32→0.45</span></div>
+    </div>
+    <div class="sm-grid" style="margin-top:4px">
+      <div class="sm-edge" style="min-width:40px">s 到目标</div>
+      <div class="sm-node sm-retract">⬅ 4 RETRACT<span class="desc">3段回收<br>mode 3 逻辑</span></div>
+      <div class="sm-edge">arm_2 &lt; target2+tol</div>
+      <div class="sm-node sm-done">✅ 5 DONE<span class="desc">关吸盘<br>auto_run=0</span></div>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-size:0.75em;color:var(--dim)">
+      PUMP_ON ~ RETRACT: 吸盘全程 SET · DONE: RESET 关闭 · auto_run 到位自动推进 · debug_step 手动步进
+    </div>
+  </div>
+</div>
+
+<!-- ====== THREE HEIGHTS ====== -->
+<div class="card card-pose">
+  <div class="ch"><span style="font-size:1.2em">📏</span> 三档高度选择</div>
+  <div class="cb">
+    <table class="tbl">
+    <tr><th>档位</th><th>arm.mode</th><th>height_sel</th><th>h (垂直高度)</th><th>s 范围</th><th>用途</th></tr>
+    <tr>
+      <td><span class="tag tag-l">低位</span></td>
+      <td>0</td><td><code>kfs_auto.pose.height_sel = 0</code></td>
+      <td style="color:var(--pose);font-weight:700">0.23</td>
+      <td>0.32 ~ 0.60</td>
+      <td>取架子下层 KFS</td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-m">中位</span></td>
+      <td>5</td><td><code>kfs_auto.pose.height_sel = 5</code></td>
+      <td style="color:var(--push);font-weight:700">0.435</td>
+      <td>0.32 ~ 0.60</td>
+      <td>取架子中层 KFS</td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-h">高位</span></td>
+      <td>6</td><td><code>kfs_auto.pose.height_sel = 6</code></td>
+      <td style="color:#ff5722;font-weight:700">0.65</td>
+      <td>0.32 ~ 0.60</td>
+      <td>取架子上层 KFS</td>
+    </tr>
+    </table>
+    <div style="margin-top:10px;font-size:0.78em;color:var(--dim)">
+      三种高度共用同一逆解算公式 (Arm_Inverse_Solution case 0/5/6/7)，仅 <code>arm.h</code> 不同 · 每帧用 h + 当前 s 算 θ₁/θ₂/θ₃
+    </div>
+  </div>
+</div>
+
+<!-- ====== DUAL MODE ====== -->
+<div class="card">
+  <div class="ch"><span style="font-size:1.2em">🎮</span> 两种运行模式</div>
+  <div class="cb">
+    <table class="tbl">
+    <tr><th style="width:12%">模式</th><th>触发变量</th><th>推进机制</th><th>每步确认</th><th>适用场景</th></tr>
+    <tr>
+      <td><span class="tag tag-pose">🔬 单步调试</span></td>
+      <td><code>kfs_auto.debug_step</code></td>
+      <td>Watch 写值 1→2→3→4→5，上升沿推进一格</td>
+      <td>手动确认每步正确后写下一步</td>
+      <td>开发调试，参数调优</td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-push">🚀 全自动</span></td>
+      <td><code>kfs_auto.auto_run = 1</code></td>
+      <td>到位自动跳下一步（PUMP_ON 延时 → POSE 到位 → PUSH s 到目标 → RETRACT arm_2 到最深）</td>
+      <td>全自动，无需人工干预</td>
+      <td>比赛 / 正式运行</td>
+    </tr>
+    </table>
+    <div style="margin-top:10px;font-size:0.78em;color:var(--dim)">
+      两种模式共存：debug_step 上升沿优先，auto_run 模式到位自动推进 · DONE 时 auto_run 自动清零
+    </div>
+  </div>
+</div>
+
+<!-- ====== STRUCT & PARAMS ====== -->
+<div class="card card-push">
+  <div class="ch"><span style="font-size:1.2em">🧱</span> 结构体 & 在线可调参数 <span class="tag tag-n">29 个 globals</span></div>
+  <div class="cb">
+    <h4 style="color:var(--push)">Kfs_Auto_Module 层次</h4>
+    <table class="tbl">
+    <tr><th style="width:18%">结构体</th><th style="width:32%">字段</th><th style="width:18%">默认值</th><th>说明</th></tr>
+    <tr><td rowspan="3" style="color:var(--pump);font-weight:700">.push<br><span style="font-size:0.7em;color:var(--dim)">Kfs_Auto_PushParam</span></td>
+      <td><code>s_start</code></td><td>0.32</td><td>前推起始水平距离</td></tr>
+    <tr><td><code>s_target</code></td><td>0.45</td><td>前推目标水平距离</td></tr>
+    <tr><td><code>s_step</code></td><td>0.005</td><td>每帧步长 (5mm/帧)</td></tr>
+    <tr><td rowspan="5" style="color:var(--pose);font-weight:700">.pose<br><span style="font-size:0.7em;color:var(--dim)">Kfs_Auto_PoseParam</span></td>
+      <td><code>h_low</code></td><td>0.23</td><td>低位垂直高度</td></tr>
+    <tr><td><code>h_mid</code></td><td>0.435</td><td>中位垂直高度</td></tr>
+    <tr><td><code>h_high</code></td><td>0.65</td><td>高位垂直高度</td></tr>
+    <tr><td><code>pose_s</code></td><td>0.32</td><td>摆姿态初始 s</td></tr>
+    <tr><td><code>height_sel</code></td><td>0</td><td>高度选择 0=低 5=中 6=高</td></tr>
+    <tr><td rowspan="6" style="color:var(--retract);font-weight:700">.retract<br><span style="font-size:0.7em;color:var(--dim)">Kfs_Auto_RetractParam</span></td>
+      <td><code>th1</code></td><td>−1.6</td><td>阶段1 arm_2 阈值</td></tr>
+    <tr><td><code>th2</code></td><td>−2.92</td><td>阶段2 arm_2 阈值</td></tr>
+    <tr><td><code>target2</code></td><td>−4.3</td><td>arm_2 最深目标</td></tr>
+    <tr><td><code>arm1_mid / arm1_deep</code></td><td>0.2 / 0.6</td><td>arm_1 中段/深段目标</td></tr>
+    <tr><td><code>arm3_target</code></td><td>−52.0</td><td>arm_3 目标角度</td></tr>
+    <tr><td><code>kp2_s1 / kd2_s1</code></td><td>30 / 5</td><td>阶段1 PID</td></tr>
+    <tr><td rowspan="3" style="color:var(--kpi-blue);font-weight:700">控制</td>
+      <td><code>debug_step</code></td><td>0</td><td>Watch 写值手动步进</td></tr>
+    <tr><td><code>auto_run</code></td><td>0</td><td>写1全自动跑到底</td></tr>
+    <tr><td><code>pump_delay_ms</code></td><td>300</td><td>吸盘稳定延时(ms)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====== RETRACT DETAIL ====== -->
+<div class="card card-retract">
+  <div class="ch"><span style="font-size:1.2em">⬅</span> 回收阶段详解 — 复用 arm.c mode 3 三段回收</div>
+  <div class="cb">
+    <div class="bbox bbox-retract">
+      <b>阶段1</b> <code>arm_2 &gt; th1 (−1.6)</code><br>
+      ▸ <code>in_place(th1, ...)</code> 缓动 arm_2 → −1.6<br>
+      KP=<code>kp2_s1</code> KD=<code>kd2_s1</code>
+    </div>
+    <div class="bbox bbox-retract">
+      <b>阶段2</b> <code>th2 (−2.92) &lt; arm_2 &lt; th1 (−1.6)</code><br>
+      ▸ arm_1: <code>in_place(arm1_mid=0.2, ...)</code> 收大臂<br>
+      ▸ arm_2: <code>in_place(th2=−2.92, ...)</code> 继续收小臂<br>
+      KP1=<code>kp1_s2</code> KD1=<code>kd1_s2</code> · KP2=<code>kp2_s2</code> KD2=<code>kd2_s2</code>
+    </div>
+    <div class="bbox bbox-retract">
+      <b>阶段3</b> <code>arm_2 &lt; th2 (−2.92)</code><br>
+      ▸ arm_3: <code>set_mit_data(arm3_target=−52)</code> 末端旋转<br>
+      ▸ arm_1: <code>set_mit_data(arm1_deep=0.6)</code> 大臂深位<br>
+      ▸ arm_2: <code>in_place_1(target2=−4.3, ...)</code> 小臂最深
+    </div>
+    <div style="margin-top:8px;font-size:0.76em;color:var(--dim)">
+      auto_run 到位判断: arm_2 &lt; target2 + done_tol (0.15) → DONE
+    </div>
+  </div>
+</div>
+
+<!-- ====== INTEGRATION ====== -->
+<div class="card card-done">
+  <div class="ch"><span style="font-size:1.2em">🔌</span> 集成方式 — 零侵入</div>
+  <div class="cb">
+    <div class="bbox bbox-integrate">
+      <b>Can_Task.c 的 HF_Task() 中只加 <span style="color:var(--done)">1 行</span>：</b><br>
+      <code style="font-size:1em">KFS_Auto_Process();  // 每帧 200Hz，无遥控依赖</code>
+    </div>
+    <table class="tbl" style="margin-top:12px">
+    <tr><th>不改动的文件</th><th>依赖的已有接口</th></tr>
+    <tr>
+      <td>arm.c · kfs.c · motor_control.c · remote_control.c · Can_Task.c (仅+1行)</td>
+      <td>
+        <code>Arm_Inverse_Solution()</code> 逆解算 ·
+        <code>Torque_Comp_global()</code> 重力补偿 ·
+        <code>in_place() / in_place_1()</code> 平滑到位 ·
+        <code>kfs_arm_1/2/3, kfs_catch</code> 电机句柄 ·
+        GPIO PE14/PC12 吸盘
+      </td>
+    </tr>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<footer>RC26_H7_R2 · KFS 自动取放系统 · 5 态状态机 · 三高度 · s-ramp · 2026-07-03</footer>
+</body>
+</html>
