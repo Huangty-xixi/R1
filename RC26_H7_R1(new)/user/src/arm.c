@@ -1,4 +1,5 @@
 #include "arm.h"
+#include "pick_kfs_auto.h"
 
     Arm_Info_TypeDef arm;
     ArmAnglesTypeDef angles;
@@ -94,6 +95,7 @@ ArmAnglesTypeDef Arm_Inverse_Solution(Arm_Info_TypeDef *arm)
 /*机械臂任务函数*/
 HAL_StatusTypeDef Arm_task(DM_MotorModule *arm_1,DM_MotorModule *arm_2,DM_MotorModule *arm_3)
 {
+    if (!PickKfsAuto_IsIdle()) { PickKfsAuto_Run(); return HAL_OK; }
             float kfs_1[5]={0,0,0,0,0};//位置,速度,kp,kd,t
             float kfs_2[5]={0,0,0,0,0};
             float kfs_3[5]={0,0,0,0,0};
