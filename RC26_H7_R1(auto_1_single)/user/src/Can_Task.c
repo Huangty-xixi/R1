@@ -444,6 +444,7 @@ void Sent_Task(void const * argument)
 	 
 	 uart8_tx_init();
 	 JudgeRelativeSize_Global(kfs1,removed_k1);
+	 if (success && removed_cnt >= 2) { vTaskDelay(1); JudgeRelativeSize_Global(kfs1,(float)removed_k1_2); }
 	 RCctrl.received = false;
 	 sent_flag = true;
 	 vTaskDelay(1);

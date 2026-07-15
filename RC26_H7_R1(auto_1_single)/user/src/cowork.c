@@ -47,9 +47,18 @@ void uart8_tx_init()
     uart8_tx_buf[4] = combine_4bit(path_data[6], k2_data[0]); // 低4bit=K2_1
     uart8_tx_buf[5] = combine_4bit(k2_data[1], k2_data[2]);  // 高4bit=K2_2，低4bit=K2_3
 	
-	if(removed_k1 == 2){uart8_tx_buf[6] = 0x02;}
-    else if(removed_k1 == 1 || removed_k1 == 3){uart8_tx_buf[6] = 0x01;}
-    else{uart8_tx_buf[6] = 0x00;}
+	/* K1编码：相对位置（1=min K1, 2=mid, 3=max），支持1或2个 */
+		{
+			int rel1 = 0, rel2 = 0;
+		for (int i = 0; i < 3; i++) {
+			if (kfs1[i] == removed_k1)      rel1 = i + 1;
+			if (kfs1[i] == removed_k1_2)    rel2 = i + 1;
+		}
+		if (removed_cnt >= 2)
+			uart8_tx_buf[6] = (uint8_t)((rel1 << 4) | (rel2 & 0x0F));
+		else
+			uart8_tx_buf[6] = (uint8_t)rel1;
+	}
     
 }
 
