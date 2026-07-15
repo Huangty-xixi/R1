@@ -1,0 +1,171 @@
+<html>
+<body>
+<pre>
+<h1>�Vision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: ��Vision V5.42.0.0
+Copyright (C) 2025 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: 1 1, 1, LIC=W96CK-ZSQ25-E03N4-F8MAN-QE6BW-CPH2A
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Professional  Version: 5.42.0.0
+Toolchain Path:  D:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 7 (build 960)
+Assembler:       Armasm.exe V5.06 update 7 (build 960)
+Linker/Locator:  ArmLink.exe V5.06 update 7 (build 960)
+Library Manager: ArmAr.exe V5.06 update 7 (build 960)
+Hex Converter:   FromElf.exe V5.06 update 7 (build 960)
+CPU DLL:         SARMCM3.DLL V5.42.0.0
+Dialog DLL:      DCM.DLL V1.17.5.0
+Target DLL:      CMSIS_AGDI.dll V1.33.22.0
+Dialog DLL:      TCM.DLL V1.56.6.0
+ 
+<h2>Project:</h2>
+E:\zhengyi\EK-ZheYi\RC26R1\RC26_H7_R1(auto_1_single)\RC26_H7_R1(auto_1_single)\MDK-ARM\RC26_H7_R1.uvprojx
+Project File Date:  07/12/2026
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'D:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'RC26_H7_R1'
+compiling auto_mode.c...
+../Drivers/CMSIS/Include/cachel1_armv7.h(188): warning:  #1041-D: alignment for an auto object may not be larger than 8
+      } locals
+../user/inc/policy.h(38): warning:  #1-D: last line of file ends without a newline
+  											 
+../user/inc/remote_control.h(142): warning:  #1-D: last line of file ends without a newline
+  #endif
+../user/inc/auto_mode.h(47): warning:  #1295-D: Deprecated declaration auto_mission - give arg types
+  extern void auto_mission();
+../user/inc/auto_mode.h(48): warning:  #1295-D: Deprecated declaration kfs_auto - give arg types
+  extern void kfs_auto();
+../user/inc/auto_mode.h(49): warning:  #1295-D: Deprecated declaration Auto_Init - give arg types
+  extern void Auto_Init();
+../user/inc/auto_mode.h(50): warning:  #1295-D: Deprecated declaration auto_second_inplace - give arg types
+  extern void auto_second_inplace();
+..\user\src\auto_mode.c(46): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+               if(kfs_arm_1.position<0.4&&kfs_arm_1.position>0.0&&kfs_arm_2.position<-0.85f&&kfs_arm_2.position>-1.5f&&kfs_arm_3.position>20.0f&&kfs_arm_3.position<36.0f)//��е������������?
+..\user\src\auto_mode.c(46): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+               if(kfs_arm_1.position<0.4&&kfs_arm_1.position>0.0&&kfs_arm_2.position<-0.85f&&kfs_arm_2.position>-1.5f&&kfs_arm_3.position>20.0f&&kfs_arm_3.position<36.0f)//��е������������?
+..\user\src\auto_mode.c(82): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+         if(kfs_arm_1.position>0.4&&kfs_arm_1.position<0.6&&kfs_arm_2.position>-0.32&&kfs_arm_2.position<-0.28&&kfs_arm_3.position>24.8f&&kfs_arm_3.position<30.2f)//�ո˵�λ
+..\user\src\auto_mode.c(82): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+         if(kfs_arm_1.position>0.4&&kfs_arm_1.position<0.6&&kfs_arm_2.position>-0.32&&kfs_arm_2.position<-0.28&&kfs_arm_3.position>24.8f&&kfs_arm_3.position<30.2f)//�ո˵�λ
+..\user\src\auto_mode.c(97): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       kfs_arm_3.set_mit_data(&kfs_arm_3,-25*(-kfs_arm_2.position-kfs_arm_1.position+0.43+a_weapon+0.12*PI),0.0f,3.0f,2.5f,Torque.Torque_3);
+..\user\src\auto_mode.c(97): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       kfs_arm_3.set_mit_data(&kfs_arm_3,-25*(-kfs_arm_2.position-kfs_arm_1.position+0.43+a_weapon+0.12*PI),0.0f,3.0f,2.5f,Torque.Torque_3);
+..\user\src\auto_mode.c(99): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       if(kfs_arm_1.position<0.85&&kfs_arm_1.position>0.49&&kfs_arm_2.position>-0.61&&kfs_arm_2.position<-0.25&&kfs_arm_3.position>-31.0f&&kfs_arm_3.position<-9.0f)//��е������������?
+..\user\src\auto_mode.c(99): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       if(kfs_arm_1.position<0.85&&kfs_arm_1.position>0.49&&kfs_arm_2.position>-0.61&&kfs_arm_2.position<-0.25&&kfs_arm_3.position>-31.0f&&kfs_arm_3.position<-9.0f)//��е������������?
+..\user\src\auto_mode.c(106): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+           in_place_fast(11.5+1.0f,&lift_left[0],R2_lift_motor_left.position,&lift_left[1],18.0f,8.0f,&lift_left[2],4.0f,&lift_left[3],2.0f,0.5f,&lift_left[4],1.0f,0.05f,0.30f,1.2f);
+..\user\src\auto_mode.c(107): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+           in_place_fast(11.5+1.0f,&lift_right[0],R2_lift_motor_right.position,&lift_right[1],18.0f,8.0f,&lift_right[2],4.0f,&lift_right[3],2.0f,0.5f,&lift_right[4],1.0f,0.05f,0.30f,1.2f);
+..\user\src\auto_mode.c(132): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       kfs_arm_3.set_mit_data(&kfs_arm_3,-25*(-kfs_arm_2.position-kfs_arm_1.position+0.43+a_weapon+0.12*PI),0.0f,3.0f,2.5f,Torque.Torque_3);
+..\user\src\auto_mode.c(132): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       kfs_arm_3.set_mit_data(&kfs_arm_3,-25*(-kfs_arm_2.position-kfs_arm_1.position+0.43+a_weapon+0.12*PI),0.0f,3.0f,2.5f,Torque.Torque_3);
+..\user\src\auto_mode.c(134): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       if(kfs_arm_1.position<0.85&&kfs_arm_1.position>0.40&&kfs_arm_2.position>-0.61&&kfs_arm_2.position<-0.25&&kfs_arm_3.position>-31.0f&&kfs_arm_3.position<-9.0f)//��е������������?
+..\user\src\auto_mode.c(134): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+       if(kfs_arm_1.position<0.85&&kfs_arm_1.position>0.40&&kfs_arm_2.position>-0.61&&kfs_arm_2.position<-0.25&&kfs_arm_3.position>-31.0f&&kfs_arm_3.position<-9.0f)//��е������������?
+..\user\src\auto_mode.c(171): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  	 else if(kfs_catch.position < 0.40 && kfs_catch.position > 0.35 )
+..\user\src\auto_mode.c(171): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  	 else if(kfs_catch.position < 0.40 && kfs_catch.position > 0.35 )
+..\user\src\auto_mode.c(207): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+         if(kfs_arm_1.position<0.55&&kfs_arm_1.position>0.27&kfs_arm_2.position>-0.37&&kfs_arm_2.position<-0.21&&kfs_arm_3.position>24.8f&&kfs_arm_3.position<30.2f)//�ո˵�λ
+..\user\src\auto_mode.c(207): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+         if(kfs_arm_1.position<0.55&&kfs_arm_1.position>0.27&kfs_arm_2.position>-0.37&&kfs_arm_2.position<-0.21&&kfs_arm_3.position>24.8f&&kfs_arm_3.position<30.2f)//�ո˵�λ
+..\user\src\auto_mode.c(215): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+            if(elapsed >= 0.6)
+..\user\src\auto_mode.c(302): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        if( R2_lift_motor_left.position<27.7&&R2_lift_motor_left.position>27.55&& R2_lift_motor_right.position<27.7&&R2_lift_motor_right.position>27.55)
+..\user\src\auto_mode.c(302): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        if( R2_lift_motor_left.position<27.7&&R2_lift_motor_left.position>27.55&& R2_lift_motor_right.position<27.7&&R2_lift_motor_right.position>27.55)
+..\user\src\auto_mode.c(302): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        if( R2_lift_motor_left.position<27.7&&R2_lift_motor_left.position>27.55&& R2_lift_motor_right.position<27.7&&R2_lift_motor_right.position>27.55)
+..\user\src\auto_mode.c(302): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+        if( R2_lift_motor_left.position<27.7&&R2_lift_motor_left.position>27.55&& R2_lift_motor_right.position<27.7&&R2_lift_motor_right.position>27.55)
+..\user\src\auto_mode.c(463): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(463): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(463): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(476): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(476): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(476): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                    arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position+PI*0.01),0.0f,0.2f,0.15f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(506): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(506): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(506): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(520): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(520): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(520): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.00*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(550): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(550): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(550): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(563): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(563): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(563): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                arm_3->set_mit_data(arm_3,25*(PI/2.0f+arm_1->position-0.43+arm_2->position-0.01*PI),0.0f,0.15f,0.1f,0.8*Torque.Torque_3);
+..\user\src\auto_mode.c(575): warning:  #177-D: variable "kfs_3"  was declared but never referenced
+              float kfs_3[5]={0,0,0,0,0};
+..\user\src\auto_mode.c(643): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                  arm_3->set_mit_data(arm_3,-52.0f,0.0f,0.13f,0.6f,1.0*Torque.Torque_3);
+..\user\src\auto_mode.c(651): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+                  arm_3->set_mit_data(arm_3,-52.0f,0.0f,0.13f,0.6f,1.0*Torque.Torque_3);
+..\user\src\auto_mode.c(623): warning:  #177-D: variable "kfs_3"  was declared but never referenced
+                float kfs_3[5]={0,0,0,0,0};
+..\user\src\auto_mode.c(804): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+      if(flag ==0){if(auto_x>-0.02 && auto_x<0.02) {return 0.0f;}}
+..\user\src\auto_mode.c(805): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+      if(flag ==1){if(auto_y>-0.02 && auto_y<0.02) {return 0.0f;}}
+..\user\src\auto_mode.c(806): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+      if(flag ==2){if(diff_w >-0.03 && diff_w <0.03) {return 0.0f;}}
+..\user\src\auto_mode.c: 55 warnings, 0 errors
+linking...
+Program Size: Code=111732 RO-data=1472 RW-data=1152 ZI-data=36848  
+FromELF: creating hex file...
+"RC26_H7_R1\RC26_H7_R1.axf" - 0 Error(s), 55 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: ARM
+                https://www.keil.com/pack/ARM.CMSIS.6.2.0.pack
+                ARM::CMSIS@6.2.0
+                CMSIS (Common Microcontroller Software Interface Standard)
+   * Component: CORE Version: 6.1.1
+
+Package Vendor: Keil
+                https://www.keil.com/pack/Keil.STM32H7xx_DFP.4.1.3.pack
+                Keil::STM32H7xx_DFP@4.1.3
+                STMicroelectronics STM32H7 Series Device Support
+
+<h2>Collection of Component include folders:</h2>
+  ./RTE/_RC26_H7_R1
+  D:/Keil_v5/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include
+
+<h2>Collection of Component Files used:</h2>
+
+   * Component: ARM::CMSIS:CORE@6.1.1
+      Include file:  CMSIS/Core/Include/tz_context.h
+Build Time Elapsed:  00:00:07
+</pre>
+</body>
+</html>
