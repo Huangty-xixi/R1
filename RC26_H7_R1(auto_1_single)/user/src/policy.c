@@ -18,6 +18,8 @@ int path_len;                // 路径长度
 int picked_k2[4];            // 被拾取的K2位置
 int picked_cnt;              // 拾取的K2数量
 int removed_k1;              // 被移除的K1位置
+int removed_k1_2;            // 移除2个K1时的第二个位置
+int removed_cnt;             // 实际移除了几个K1（1或2）
 int target_k2;               // 目标拾取K2数量
 
 /* ---- coordinates ---- */
@@ -75,19 +77,21 @@ static int popcnt(uint8_t x)
 }
 
 /* ================================================================
-   bfs: shortest path for a given K1 removal + target K2 count
-   removed_k1_idx: which K1 to remove (0..2)
+   bfs: shortest path for a given K1 removal set + target K2 count
+   removed_mask: bit i=1 means g_k1[i] is removed
    target_k2: how many K2 to pick (1..4)
    returns true if path found, result in g_path / g_picked_k2
    ================================================================ */
-static bool bfs_run(int removed_k1_idx, int target_k2)
+static bool bfs_run(int removed_mask, int target_k2)
 {
     memset(bfs_visited, 0, sizeof(bfs_visited));
 
-    /* blocked set: remaining K1 + Kf */
+    /* blocked set: not-removed K1 + Kf */
     memset(g_blocked, 0, sizeof(g_blocked));
-    for (int i = 0; i < MAX_K1; i++)
-        if (i != removed_k1_idx) g_blocked[g_k1[i]] = 1;
+    for (int i = 0; i < MAX_K1; i++) {
+        if (!(removed_mask & (1 << i)))
+            g_blocked[g_k1[i]] = 1;
+    }
     g_blocked[g_kf] = 1;
 
     /* K2 index lookup: 0 = not K2, 1..4 = index+1 */
@@ -221,48 +225,93 @@ static int compact_path(int *path, int len)
 }
 
 /* ================================================================
-   solve: remove 1 K1, pick target_k2 (2 or 3), find shortest
+   solve_n: remove remove_n K1s, pick target_k2, find shortest
    ================================================================ */
-bool policy_solve(int target_k2,
-                  int *out_path, int *out_path_len,
-                  int *out_picked, int *out_picked_cnt,
-                  int *out_removed_k1)
+bool policy_solve_n(int target_k2, int remove_n,
+                    int *out_path, int *out_path_len,
+                    int *out_picked, int *out_picked_cnt,
+                    int *out_removed_k1, int *out_removed_k2)
 {
-    int best_r = -1, best_len = 999;
-    for (int r = 0; r < MAX_K1; r++) {
-        if (bfs_run(r, target_k2) && g_path_len < best_len) {
+    int best_len = 999;
+    bool found = false;
+
+    *out_removed_k2 = 0;
+
+    for (int mask = 1; mask < (1 << MAX_K1); mask++) {
+        int pcnt = popcnt((uint8_t)mask);
+        if (pcnt != remove_n) continue;
+
+        if (bfs_run(mask, target_k2) && g_path_len < best_len) {
             best_len = g_path_len;
-            best_r = r;
+            found = true;
             *out_path_len = g_path_len;
             memcpy(out_path, g_path, g_path_len * sizeof(int));
             *out_picked_cnt = g_picked_cnt;
             memcpy(out_picked, g_picked_k2, g_picked_cnt * sizeof(int));
-            *out_removed_k1 = g_k1[r];
             *out_path_len = compact_path(out_path, *out_path_len);
-        }
-    }
-    return best_r >= 0;
-}
 
-/* ================================================================
-   solve_best: try target_k2 = 2, 3, pick shortest path
-   ================================================================ */
-bool policy_solve_best(int *out_path, int *out_path_len,
-                       int *out_picked, int *out_picked_cnt,
-                       int *out_removed_k1, int *out_target_k2)     //
-{
-    int best_len = 999;
-    bool found = false;
-    for (int tk = 2; tk <= 3; tk++) {
-        int path[20], pl, pk[4], pc, rk;
-        if (policy_solve(tk, path, &pl, pk, &pc, &rk) && pl < best_len) {
-            best_len = pl; found = true;
-            *out_path_len = pl; memcpy(out_path, path, pl * sizeof(int));
-            *out_picked_cnt = pc; memcpy(out_picked, pk, pc * sizeof(int));
-            *out_removed_k1 = rk; *out_target_k2 = tk;
+            int cnt = 0;
+            for (int i = 0; i < MAX_K1; i++) {
+                if (mask & (1 << i)) {
+                    if (cnt == 0) *out_removed_k1 = g_k1[i];
+                    else          *out_removed_k2 = g_k1[i];
+                    cnt++;
+                }
+            }
         }
     }
     return found;
+}
+
+/* ================================================================
+   solve_best: 4-level priority cascade
+     Step 1: 3 K2 + 1 K1, <=5 steps
+     Step 2: 3 K2 + 2 K1
+     Step 3: 2 K2 + 2 K1
+     Step 4: 2 K2 + 1 K1
+   ================================================================ */
+bool policy_solve_best(int *out_path, int *out_path_len,
+                       int *out_picked, int *out_picked_cnt,
+                       int *out_removed_k1, int *out_target_k2)
+{
+    int path[20], pl, pk[4], pc, rk1, rk2;
+    const int max_steps = 5;
+
+    /* Step 1: 3 K2 + 1 K1, <=5 steps */
+    if (policy_solve_n(3, 1, path, &pl, pk, &pc, &rk1, &rk2) && (pl - 1) <= max_steps) {
+        *out_target_k2 = 3; removed_cnt = 1;
+        goto output;
+    }
+
+    /* Step 2: 3 K2 + 2 K1 */
+    if (policy_solve_n(3, 2, path, &pl, pk, &pc, &rk1, &rk2)) {
+        *out_target_k2 = 3; removed_cnt = 2;
+        goto output;
+    }
+
+    /* Step 3: 2 K2 + 2 K1 */
+    if (policy_solve_n(2, 2, path, &pl, pk, &pc, &rk1, &rk2)) {
+        *out_target_k2 = 2; removed_cnt = 2;
+        goto output;
+    }
+
+    /* Step 4: 2 K2 + 1 K1 */
+    if (policy_solve_n(2, 1, path, &pl, pk, &pc, &rk1, &rk2)) {
+        *out_target_k2 = 2; removed_cnt = 1;
+        goto output;
+    }
+
+    return false;
+
+output:
+    *out_path_len = pl;
+    memcpy(out_path, path, pl * sizeof(int));
+    *out_picked_cnt = pc;
+    memcpy(out_picked, pk, pc * sizeof(int));
+    *out_removed_k1 = rk1;
+    removed_k1   = rk1;
+    removed_k1_2 = rk2;
+    return true;
 }
 
 /* ================================================================
@@ -270,6 +319,20 @@ bool policy_solve_best(int *out_path, int *out_path_len,
    compile: gcc -DTEST_MAIN -o policy_test policy.c && ./policy_test
    ================================================================ */
 #ifdef TEST_MAIN
+
+static void print_result(const char *label, int tk, int rk1, int rk2, int rcnt,
+                         int *path, int pl, int *pk, int pc)
+{
+    printf("\n-- %s --\n  pick %d K2, remove %d K1", label, tk, rcnt);
+    if (rcnt >= 2) printf(" [%d, %d]", rk1, rk2);
+    else           printf(" [%d]", rk1);
+    printf("\n  path: ");
+    for (int i = 0; i < pl; i++) printf("%d ", path[i]);
+    printf("\n  picked K2: ");
+    for (int i = 0; i < pc; i++) printf("%d ", pk[i]);
+    printf("  steps: %d\n", pl - 1);
+}
+
 int main(void)
 {
     int k1[3] = {3, 6, 10};
@@ -280,41 +343,45 @@ int main(void)
     printf("Map: K1=[%d,%d,%d] K2=[%d,%d,%d,%d] Kf=%d\n",
            k1[0], k1[1], k1[2], k2[0], k2[1], k2[2], k2[3], kf);
 
-    /* pick 2 K2 */
+    /* Step-by-step fallback trace */
     {
-        int path[20], pl, pk[4], pc, rk;
-        if (policy_solve(2, path, &pl, pk, &pc, &rk)) {
-            printf("\n-- pick 2 K2 --\n  remove K1: %d\n  path: ", rk);
-            for (int i = 0; i < pl; i++) printf("%d ", path[i]);
-            printf("\n  picked K2: ");
-            for (int i = 0; i < pc; i++) printf("%d ", pk[i]);
-            printf("  steps: %d\n", pl - 1);
-        }
-    }
+        int path[20], pl, pk[4], pc, rk1, rk2;
+        int max_steps = 5;
 
-    /* pick 3 K2 */
-    {
-        int path[20], pl, pk[4], pc, rk;
-        if (policy_solve(3, path, &pl, pk, &pc, &rk)) {
-            printf("\n-- pick 3 K2 --\n  remove K1: %d\n  path: ", rk);
-            for (int i = 0; i < pl; i++) printf("%d ", path[i]);
-            printf("\n  picked K2: ");
-            for (int i = 0; i < pc; i++) printf("%d ", pk[i]);
-            printf("  steps: %d\n", pl - 1);
-        }
+        printf("\n=== STAGE: 3 K2 + 1 K1 (max %d steps) ===", max_steps);
+        if (policy_solve_n(3, 1, path, &pl, pk, &pc, &rk1, &rk2)) {
+            printf("  found, steps=%d", pl - 1);
+            if (pl - 1 <= max_steps) {
+                print_result("OK (<=5 steps)", 3, rk1, rk2, 1, path, pl, pk, pc);
+            } else {
+                printf("  -- REJECTED (>5 steps)\n");
+            }
+        } else { printf("  -- no solution\n"); }
+
+        printf("\n=== STAGE: 3 K2 + 2 K1 ===");
+        if (policy_solve_n(3, 2, path, &pl, pk, &pc, &rk1, &rk2)) {
+            print_result("FALLBACK", 3, rk1, rk2, 2, path, pl, pk, pc);
+        } else { printf("  -- no solution\n"); }
+
+        printf("\n=== STAGE: 2 K2 + 2 K1 ===");
+        if (policy_solve_n(2, 2, path, &pl, pk, &pc, &rk1, &rk2)) {
+            print_result("FALLBACK", 2, rk1, rk2, 2, path, pl, pk, pc);
+        } else { printf("  -- no solution\n"); }
+
+        printf("\n=== STAGE: 2 K2 + 1 K1 ===");
+        if (policy_solve_n(2, 1, path, &pl, pk, &pc, &rk1, &rk2)) {
+            print_result("FALLBACK", 2, rk1, rk2, 1, path, pl, pk, pc);
+        } else { printf("  -- no solution\n"); }
     }
 
     /* best */
     {
         int path[20], pl, pk[4], pc, rk, tk;
+        printf("\n=== policy_solve_best() ===");
         if (policy_solve_best(path, &pl, pk, &pc, &rk, &tk)) {
-            printf("\n-- BEST --\n  pick %d K2, remove K1: %d\n  path: ", tk, rk);
-            for (int i = 0; i < pl; i++) printf("%d ", path[i]);
-            printf("\n  picked K2: ");
-            for (int i = 0; i < pc; i++) printf("%d ", pk[i]);
-            printf("  steps: %d\n", pl - 1);
+            print_result("BEST", tk, rk, removed_k1_2, removed_cnt, path, pl, pk, pc);
         } else {
-            printf("\nNo solution!\n");
+            printf("  -- No solution!\n");
         }
     }
     return 0;

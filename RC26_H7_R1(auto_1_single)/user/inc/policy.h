@@ -24,6 +24,8 @@ extern int path_len;                // 路径长度
 extern int picked_k2[4];            // 被拾取的K2位置
 extern int picked_cnt;              // 拾取的K2数量
 extern int removed_k1;              // 被移除的K1位置
+extern int removed_k1_2;           // 移除2个K1时的第二个位置
+extern int removed_cnt;            // 实际移除了几个K1（1或2）
 extern int target_k2;               // 目标拾取K2数量
 
 
