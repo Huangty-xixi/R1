@@ -45,6 +45,7 @@ static uint8_t bfs_visited[GRID_W + 2][GRID_H + 2][1 << MAX_K2];
 static int     bfs_head, bfs_tail;
 static const int8_t dx[4] = {-1, 1, 0, 0};
 static const int8_t dy[4] = { 0, 0,-1, 1};
+static int s_bottom_k2_mask; /* 底部行(1/2/3号格)K2的bitmask，bfs_run内赋值 */
 
 /* ---- output ---- */
 static int g_path[20];
@@ -99,6 +100,14 @@ static bool bfs_run(int removed_mask, int target_k2)
     for (int i = 0; i < MAX_K2; i++)
         k2_idx[g_k2[i]] = i + 1;
 
+    /* 底部约束：K2在{1,2,3}时必须至少捡一个才能出口 */
+    s_bottom_k2_mask = 0;
+    for (int i = 0; i < MAX_K2; i++) {
+        int cell = g_k2[i];
+        if (cell == 1 || cell == 2 || cell == 3)
+            s_bottom_k2_mask |= (1 << i);
+    }
+
     /* init BFS */
     bfs_head = bfs_tail = 0;
     bfs_queue[0].x = -1; bfs_queue[0].y = -1; bfs_queue[0].mask = 0;
@@ -139,23 +148,26 @@ static bool bfs_run(int removed_mask, int target_k2)
         /* ---- check exit ---- */
         int cn = cell_num(x, y);
         if ((cn == EXIT1 || cn == EXIT2) && pc == target_k2) {
-            g_path_len = 0;
-            g_picked_cnt = 0;
-            uint8_t fmask = mask;
-            int idx = bfs_head;
-            while (idx >= 0) {
-                if (bfs_queue[idx].x != -1)
-                    g_path[g_path_len++] = cell_num(bfs_queue[idx].x, bfs_queue[idx].y);
-                idx = bfs_parent[idx];
+            /* 底部约束：K2在{1,2,3}时必须至少捡一个才能出口 */
+            if (s_bottom_k2_mask == 0 || (mask & s_bottom_k2_mask)) {
+                g_path_len = 0;
+                g_picked_cnt = 0;
+                uint8_t fmask = mask;
+                int idx = bfs_head;
+                while (idx >= 0) {
+                    if (bfs_queue[idx].x != -1)
+                        g_path[g_path_len++] = cell_num(bfs_queue[idx].x, bfs_queue[idx].y);
+                    idx = bfs_parent[idx];
+                }
+                for (int i = 0; i < g_path_len / 2; i++) {
+                    int t = g_path[i];
+                    g_path[i] = g_path[g_path_len - 1 - i];
+                    g_path[g_path_len - 1 - i] = t;
+                }
+                for (int i = 0; i < MAX_K2; i++)
+                    if (fmask & (1 << i)) g_picked_k2[g_picked_cnt++] = g_k2[i];
+                return true;
             }
-            for (int i = 0; i < g_path_len / 2; i++) {
-                int t = g_path[i];
-                g_path[i] = g_path[g_path_len - 1 - i];
-                g_path[g_path_len - 1 - i] = t;
-            }
-            for (int i = 0; i < MAX_K2; i++)
-                if (fmask & (1 << i)) g_picked_k2[g_picked_cnt++] = g_k2[i];
-            return true;
         }
 
         /* ---- find adjacent unpicked K2 ---- */
