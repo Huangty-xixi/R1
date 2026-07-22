@@ -417,7 +417,17 @@ void Free_Task(void const * argument)
 			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,1600);	
 			BUT_flag.button_new =0;
 		}
-	 
+		
+	 if (sent_flag == true) 
+{
+	JudgeRelativeSize_Global(kfs1,(float)removed_k1); 
+	 if(removed_cnt >= 2)
+  {
+	  vTaskDelay(4000); 
+		JudgeRelativeSize_Global(kfs1,(float)removed_k1_2); 
+		vTaskDelay(4000); 
+	}
+}
 	 osDelay(5);
  }
 }
@@ -443,8 +453,7 @@ void Sent_Task(void const * argument)
 	 vTaskDelay(1);
 	 
 	 uart8_tx_init();
-	 JudgeRelativeSize_Global(kfs1,removed_k1);
-	 if (success && removed_cnt >= 2) { vTaskDelay(1); JudgeRelativeSize_Global(kfs1,(float)removed_k1_2); }
+	 
 	 RCctrl.received = false;
 	 sent_flag = true;
 	 vTaskDelay(1);
